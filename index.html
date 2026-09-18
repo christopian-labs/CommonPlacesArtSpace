@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
+<script src="./assets/js/support.js"></script>
 </head>
 <body>
 <x-dc>
@@ -23,7 +23,9 @@ a:hover { color:#9C6B44; border-bottom-color:#9C6B44; }
 [data-eb-body]::-webkit-scrollbar-thumb { background:rgba(14,14,14,.22); }
 img { display:block; }
 @keyframes eb-card-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
+@keyframes eb-card-fade { from { opacity:0; } to { opacity:1; } }
 @keyframes eb-stem-in { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+@keyframes eb-wire-in { from { stroke-dashoffset:700; } to { stroke-dashoffset:0; } }
 @keyframes eb-panel-a { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
 @keyframes eb-panel-b { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
 @keyframes eb-line-in { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
@@ -46,7 +48,7 @@ img { display:block; }
 @keyframes eb-peek-out { from { opacity:1; } to { opacity:1; } }
 /* plaster tooth — a tileable three-octave value-noise plate, generated once.
    A data URI does not survive the inline-style pipeline, so this one rule lives here. */
-[data-eb-grain] { background-image:url("wall-tooth.png"); }
+[data-eb-grain] { background-image:url("assets/img/wall-tooth.png"); }
 /* front-door entries live here, not in the per-render style string: rebuilding
    the shorthand on every setState restarted them and left rows in their
    from-state, which also made the block unmeasurable. */
@@ -494,6 +496,11 @@ img { display:block; }
                 <span data-eb-year="{{ m.anchor }}" style="{{ m.style }}">{{ m.label }}</span>
               </sc-for>
               <sc-for list="{{ z.items }}" as="it" hint-placeholder-count="11">
+                <div style="{{ it.hookStyle }}">
+                  <svg width="20" height="{{ it.hookH }}" viewBox="0 0 20 {{ it.hookH }}" style="display:block;overflow:visible;">
+                    <path d="{{ it.hookD }}" style="{{ it.wireStyle }}"></path>
+                  </svg>
+                </div>
                 <div style="{{ it.stemStyle }}"></div>
                 <div data-eb-lab="1" style="{{ it.labelStyle }}">
                   <div data-eb-cap1="1" style="{{ it.labelHeadStyle }}">
@@ -507,10 +514,12 @@ img { display:block; }
                 </div>
                 <div onClick="{{ it.onClick }}" onMouseEnter="{{ it.onEnterCard }}" onMouseLeave="{{ it.onLeaveCard }}" data-eb-card="1" data-eb-open="{{ it.openFlag }}" style="{{ it.cardStyle }}">
                 <div style="{{ it.swingStyle }}">
+                <div data-eb-tilt="{{ it.tiltF }}" style="{{ it.tiltStyle }}">
                 <div style="{{ it.innerStyle }}">
                   <sc-if value="{{ it.isClosed }}" hint-placeholder-val="{{ true }}">
                     <div style="{{ it.plateStyle }}" role="img" aria-label="{{ it.title }}"></div>
                   </sc-if>
+                </div>
                 </div>
                 </div>
                 </div>
@@ -922,6 +931,7 @@ class Component extends DCLogic {
     if (this.roomRO) this.roomRO.disconnect();
     if (this.capRO) this.capRO.disconnect();
     if (this.bandRO) this.bandRO.disconnect();
+    cancelAnimationFrame(this.swingRaf);
   }
 
   /* ---- rail-scrub engine: every frame's state is a function of rail position ---- */
@@ -929,6 +939,8 @@ class Component extends DCLogic {
   queueScrub() {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.scrubT);
+    /* the velocity loop is cheap and self-parking; any rail movement restarts it */
+    if (!this.swingRaf) this.swingRaf = requestAnimationFrame(this.swingTick);
     this.raf = requestAnimationFrame(() => this.scrub());
     this.scrubT = setTimeout(() => this.scrub(), 120);
   }
@@ -1010,12 +1022,50 @@ class Component extends DCLogic {
     }, 110);
   }
 
+  /* ---- the walk's own wind: swing magnitude and direction from scroll velocity ---- */
+
+  swingTick = () => {
+    const zone = this.state.zone;
+    const el = zone ? this.refs2[zone].current : null;
+    if (!el) { this.swingRaf = 0; return; }
+    const sl = el.scrollLeft;
+    let dx = this.lastSl === undefined ? 0 : sl - this.lastSl;
+    this.lastSl = sl;
+    /* a room change or a jump to a year is not a breeze */
+    if (Math.abs(dx) > 400) dx = 0;
+    /* velocity is smoothed, then read as a target angle: the wall moving left
+       leaves the paper trailing right. A light spring carries the piece to that
+       angle and lets it overshoot back once the wall stops — direction comes from
+       the direction of travel, magnitude from its speed. */
+    this.sv = (this.sv || 0) * 0.84 + dx * 0.16;
+    const target = Math.max(-0.85, Math.min(0.85, -this.sv / 72));
+    /* a slow, heavy spring: low stiffness so the return takes about half a second
+       rather than a fifth of one, and enough damping that a hard flick ends in a
+       single soft overshoot instead of a shiver. */
+    this.saV = (this.saV || 0) + (target - (this.sa || 0)) * 0.05;
+    this.saV *= 0.76;
+    this.saV = Math.max(-0.075, Math.min(0.075, this.saV));
+    this.sa = (this.sa || 0) + this.saV;
+    if (Math.abs(this.sa) < 0.0005 && Math.abs(this.saV) < 0.0005) { this.sa = 0; this.saV = 0; }
+    if (this.sa !== this.saLast) {
+      this.saLast = this.sa;
+      el.querySelectorAll("[data-eb-tilt]").forEach(n => {
+        const card = n.closest("[data-eb-card]");
+        if (card && card.getAttribute("data-eb-open") === "1") { n.style.transform = ""; return; }
+        const f = parseFloat(n.getAttribute("data-eb-tilt")) || 1;
+        n.style.transform = this.sa ? "rotate(" + (this.sa * 1.5 * f).toFixed(3) + "deg)" : "";
+      });
+    }
+    this.swingRaf = requestAnimationFrame(this.swingTick);
+  };
+
   attach() {
     ["photo", "gen"].forEach(k => {
       const el = this.refs2[k].current;
       if (el && !el.__bound) { el.__bound = true; el.addEventListener("scroll", this.onScrollRail, { passive: true }); }
     });
     const el = this.state.zone ? this.refs2[this.state.zone].current : null;
+    if (el && !this.swingRaf) { this.lastSl = undefined; this.swingRaf = requestAnimationFrame(this.swingTick); }
     if (el) {
       const w = el.clientWidth, h = el.clientHeight;
       /* the first scrub runs against the fallback rail box, so its scale and label
@@ -1198,7 +1248,18 @@ class Component extends DCLogic {
       .sort((a, b) => String(a[2]).localeCompare(String(b[2])));
     const { h: railH, w: railW } = this.railBox();
     const openIdx = this.state.zone === zone ? this.state.open : null;
-    const baseline = Math.round(railH * 0.55);
+    /* one rail, everything under it. The rod hangs high on the wall and every
+       print hangs from a hook over it, the way a piece actually hangs — nothing
+       rests on a line pushing up from below.
+       The hang is a block — hook crest, the deepest drop, the label band, the
+       print — and that block is centred in the room: the air above the crest
+       equals the air beneath the lowest print, so the wall reads hung rather
+       than pressed to one edge. */
+    const HOOK_CREST = 14, LAB_BAND = 39;
+    const cardHz = Math.max(56, Math.round(railH * 0.44));
+    const maxDropz = Math.round(railH * 0.11);
+    const blockH = HOOK_CREST + maxDropz + LAB_BAND + cardHz;
+    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2));
     /* the rail head sits above the scroller, so the scroller's own middle is not
        the window's middle — half the head's height corrects for it. */
     const scEl = this.refs2[zone] && this.refs2[zone].current;
@@ -1244,35 +1305,33 @@ class Component extends DCLogic {
       /* the frame holds only the print; the label is a plate on the wall beside it,
          on the far side from the baseline so it can run wider than the frame. */
       const LAB_H = 30, LAB_GAP = 9;
-      const above = i % 2 === 0;
-      const room = above ? baseline : railH - baseline;
-      /* the height and stem cycles are fractions of the room actually left after the
-         label plate and its air — not of railH. Taken off railH, the clamp fired on
-         every card at short rail heights and flattened eleven prints into two, and a
-         hang with two states is a zigzag, not a hang. */
-      const avail = Math.max(96, room - LAB_H - LAB_GAP - 6);
-      /* every print is the same size. The size is set by the tighter of the two
-         sides of the rail, so an above-rail and a below-rail print measure the
-         same; the wall's rhythm comes from the stem lengths and the alternation
-         alone, never from scale. */
-      const availMin = Math.max(96, Math.min(baseline, railH - baseline) - LAB_H - LAB_GAP - 6);
-      let cardH = Math.max(64, Math.round(availMin * 0.88));
-      const stemShare = 0.13 + (STEMF[i % STEMF.length] - 0.13) * (0.30 / 0.28);
-      let stem = Math.max(12, Math.min(Math.round(avail - cardH - 2), Math.round(availMin * stemShare)));
+      const above = false;
+      /* the drop cycle rides the room, not what is left of it — the print size is
+         fixed before any wire length is chosen, so every print measures the same
+         and the rhythm comes from the drops alone. */
+      const dropN = (STEMF[i % STEMF.length] - 0.13) / 0.15;
+      const drop = Math.round(railH * (0.03 + dropN * 0.08));
+      let cardH = cardHz;
+      let stem = drop + LAB_H + LAB_GAP;
       let imgH = cardH - 16;
       const cardW = Math.round(imgH / AR) + 18;
-      const top = above ? baseline - stem - cardH : baseline + stem;
+      const top = baseline + stem;
       /* the wall's geometry never changes when a print opens — the panel is a
          room-level overlay, so the print's hook stays exactly where it was and
          the close lands back on it. */
       if (isOpen) openFrom = { x, top, w: cardW, h: cardH };
       const stemX = x + 26;
       const stemDelay = Math.min(ST_CAP, i * ST_FRAME);
-      /* every card hangs from one straight plumb line — above the baseline it
-         drops from the card down to the baseline, below it drops from the
-         baseline down to the card. No nail, no wire. */
-      const stemStyle = isOpen ? "display:none;"
-        : `position:absolute;left:${stemX}px;top:${above ? top + cardH : baseline}px;width:1px;height:${stem}px;background:rgba(14,14,14,.22);transform-origin:top;animation:eb-stem-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
+      /* hook and drop wire are ONE stroke, drawn as one path in one gauge: the
+         hardware is a single length of wire bent over the rod, not a hook plus a
+         line that happen to meet. It draws from the back tail, over the rod and
+         down to the print's top edge. */
+      const stemStyle = "display:none;";
+      const hookH = 14 + stem;
+      const hookStyle = isOpen ? "display:none;"
+        : `position:absolute;left:${stemX - 11}px;top:${baseline - 14}px;width:20px;height:${hookH}px;z-index:3;pointer-events:none;`;
+      const hookD = `M3 17 L3 11.5 C3 9 4 7 6.5 7 C9 7 11 9 11 13 L11 ${hookH}`;
+      const wireStyle = `fill:none;stroke:rgba(14,14,14,.34);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:700;animation:eb-wire-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
       /* spatial depth: HF (the height factor already driving each card's rest
          size) doubles as a near/far cue — taller cards read nearer (full scale,
          full contrast, closer shadow), shorter ones sit farther (slightly smaller,
@@ -1301,8 +1360,11 @@ class Component extends DCLogic {
         `filter:blur(${recede ? 5 : 0}px)`, `opacity:${isOpen ? 0 : recede ? 0.45 : 1}`,
         `pointer-events:${isOpen || recede ? "none" : "auto"}`,
         /* a `both`-filled arrival animation outranks an inline opacity, so the
-           open card drops its animation rather than fighting it. */
-        isOpen || recede ? "animation:none" : `animation:eb-card-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
+           open card drops its animation rather than fighting it. The arrival is
+           opacity only: the hook, the wire and the label are pinned to this box's
+           authored `top`, so nothing may move it — a rise here would leave the
+           print hanging 28px below its own wire. */
+        isOpen || recede ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
       ].join(";") + ";";
       const hoverOuterStyle = isOpen ? "" : "z-index:30;";
       const innerStyle = [
@@ -1331,18 +1393,27 @@ class Component extends DCLogic {
          neither is driven by scroll, hover or rail position. */
       const swingStyle = `width:100%;height:100%;transform-origin:50% ${above ? "100%" : "0%"};`
         + (isOpen ? "" : `animation:eb-swing ${swayDur}s ease-in-out ${swayDelay}s infinite;`);
+      /* a third motion, and the only one the walk drives: the wall moves, the paper
+         lags. Pivoted at the wire, not the frame's centre, so the piece really
+         hangs off its hook. The engine owns this transform; nothing else writes it.
+         Heavier prints take less of the angle. */
+      const tiltStyle = `width:100%;height:100%;transform-origin:${stemX - x}px 0px;will-change:transform;`;
+      const tiltF = (0.82 + (i % 5) * 0.09).toFixed(2);
       const lineAnim = (d) => `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${d}ms both;`;
       items.push({
         title, year, metaRows, edition, body1, body2, body3, body4, hangNote, makeRows,
         idx: String(i + 1).padStart(2, "0"),
         isOpen, isClosed: !isOpen, openFlag: isOpen ? "1" : "0", left: x, w: cardW, top, h: cardH,
         img: IMG(id, 420), imgBig: IMG(id, 1100),
-        cardStyle, innerStyle, stemStyle, capB, capC, stemDelay,
+        cardStyle, innerStyle, stemStyle, hookStyle, hookD, hookH, wireStyle, capB, capC, stemDelay,
+        /* the label sits above its print, clear to the right of the drop wire —
+           the wire is in front of the wall, the label is painted on it, and the
+           two must not cross. */
         labelStyle: isOpen ? "display:none;"
-          : `filter:blur(${recede ? 4 : 0}px);opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 1}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 46}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
-        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 46}px;overflow:hidden;`,
+          : `filter:blur(${recede ? 4 : 0}px);opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
+        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
         plateStyle: `width:calc(100% - 5px);height:calc(100% - 5px);margin:2.5px;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;filter:url(#eb-wind-sm-${i % 4}) brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
-        hoverOuterStyle, hoverInnerStyle, swingStyle,
+        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF,
         onEnterCard: isOpen ? undefined : () => this.setState({ hoverIdx: zone + ":" + i }),
         onLeaveCard: isOpen ? undefined : () => this.setState({ hoverIdx: null }),
         openPlateStyle: `width:${plateW}px;flex:none;height:100%;box-sizing:border-box;padding:18px;border-right:1px solid rgba(14,14,14,.12);background:#FFFFFF;display:flex;flex-direction:column;gap:13px;animation:eb-plate-in ${D_HERO}ms ${EASE} 80ms both;`,
@@ -1567,7 +1638,7 @@ class Component extends DCLogic {
       priceStyle: `font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#FFF;background:${accent};padding:6px 10px;white-space:nowrap;`,
       trackStyle: laid ? `position:relative;height:100%;width:${laid.trackWidth}px;` : "position:relative;height:100%;width:100%;",
       baseOver: laid ? String(laid.baseOver) : "0",
-      baselineStyle: laid ? `position:absolute;left:${-laid.baseOver}px;width:${laid.trackWidth}px;top:${laid.baseline}px;height:1px;background:rgba(14,14,14,.16);will-change:transform;` : "display:none;",
+      baselineStyle: laid ? `position:absolute;left:${-laid.baseOver}px;width:${laid.trackWidth}px;top:${laid.baseline - 1}px;height:2px;background:linear-gradient(to bottom,rgba(14,14,14,.11),rgba(14,14,14,.30));box-shadow:0 1.5px 2.5px rgba(14,14,14,.09);will-change:transform;` : "display:none;",
       items: laid ? laid.items : [],
       hasOpen: !!(laid && openIdx !== null && laid.items[openIdx]),
       open: (laid && openIdx !== null && laid.items[openIdx]) || {},
