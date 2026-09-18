@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html, body { margin:0; height:100%; overflow:hidden; background:#F5F8EF; }
+body { font-family:Archivo,Helvetica,Arial,sans-serif; color:#0E0E0E; -webkit-font-smoothing:antialiased; text-wrap:pretty; }
+a { color:#0E0E0E; text-decoration:none; border-bottom:1px solid rgba(14,14,14,.3); }
+a:hover { color:#9C6B44; border-bottom-color:#9C6B44; }
+*::selection { background:#0E0E0E; color:#FFF; }
+::-webkit-scrollbar { height:0; width:0; }
+[data-eb-body] { scrollbar-width:thin; scrollbar-color:rgba(14,14,14,.22) transparent; }
+[data-eb-body]::-webkit-scrollbar { width:3px; height:3px; }
+[data-eb-body]::-webkit-scrollbar-thumb { background:rgba(14,14,14,.22); }
+img { display:block; }
+@keyframes eb-card-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
+@keyframes eb-card-fade { from { opacity:0; } to { opacity:1; } }
+@keyframes eb-stem-in { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+@keyframes eb-wire-in { from { stroke-dashoffset:700; } to { stroke-dashoffset:0; } }
+@keyframes eb-panel-a { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
+@keyframes eb-panel-b { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
+@keyframes eb-line-in { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+@keyframes eb-plate-in { from { opacity:0; } to { opacity:1; } }
+@keyframes eb-head-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+@keyframes eb-sway { 0% { transform:rotate(-.42deg) translateX(0); } 50% { transform:rotate(.36deg) translateX(1px); } 100% { transform:rotate(-.42deg) translateX(0); } }
+/* the pendulum: the framed print rocks on its hook. Origin is the hook, not the
+   centre, so the arc is a swing and not a spin. Seamless — first and last frame
+   are the same pose. */
+@keyframes eb-swing { 0% { transform:rotate(-.8deg) translateX(-.6px); } 18% { transform:rotate(-.15deg) translateX(-.1px); } 38% { transform:rotate(.6deg) translateX(.45px); } 52% { transform:rotate(.8deg) translateX(.65px); } 70% { transform:rotate(.12deg) translateX(.1px); } 86% { transform:rotate(-.55deg) translateX(-.45px); } 100% { transform:rotate(-.8deg) translateX(-.6px); } }
+/* the index piles already own their transform (the fan), so their swing rides the
+   independent `rotate` property and composes with it instead of replacing it. */
+/* arrival at the front door: the two piles come up from very small, out of focus,
+   on the independent `scale` property so the pile's own perspective transform is
+   untouched. Everything else only resolves — blur and opacity, no movement. */
+@keyframes eb-pile-in { from { scale:.26; opacity:0; filter:blur(14px); } 60% { opacity:1; } to { scale:1; opacity:1; filter:blur(0); } }
+@keyframes eb-soft-in { from { opacity:0; filter:blur(9px); } to { opacity:1; filter:blur(0); } }
+@keyframes eb-swing-r { 0% { rotate:-.7deg; } 18% { rotate:-.13deg; } 38% { rotate:.55deg; } 52% { rotate:.7deg; } 70% { rotate:.1deg; } 86% { rotate:-.5deg; } 100% { rotate:-.7deg; } }
+@keyframes eb-sway-shadow { 0% { box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13); } 50% { box-shadow:2px 2.5px 3px rgba(14,14,14,.115),7px 18px 34px rgba(14,14,14,.145); } 100% { box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13); } }
+@keyframes eb-peek-out { from { opacity:1; } to { opacity:1; } }
+/* plaster tooth — a tileable three-octave value-noise plate, generated once.
+   A data URI does not survive the inline-style pipeline, so this one rule lives here. */
+[data-eb-grain] { background-image:url("wall-tooth.png"); }
+/* front-door entries live here, not in the per-render style string: rebuilding
+   the shorthand on every setState restarted them and left rows in their
+   from-state, which also made the block unmeasurable. */
+[data-eb-line] { animation:eb-line-in 620ms cubic-bezier(.16,.84,.32,1) both; }
+[data-eb-line]:nth-child(1) { animation-delay:90ms; }
+[data-eb-line]:nth-child(2) { animation-delay:180ms; }
+[data-eb-line]:nth-child(3) { animation-delay:270ms; }
+[data-eb-line]:nth-child(4) { animation-delay:360ms; }
+[data-eb-plate] { animation:eb-plate-in 620ms cubic-bezier(.16,.84,.32,1) both; }
+[data-eb-plate]:nth-child(2) { animation-delay:60ms; }
+[data-eb-plate]:nth-child(3) { animation-delay:120ms; }
+@keyframes eb-pre-out { to { opacity:0; visibility:hidden; } }
+[data-eb-plate]:nth-child(4) { animation-delay:180ms; }
+[data-eb-plate]:nth-child(5) { animation-delay:240ms; }
+</style>
+</helmet>
+
+<sc-if value="{{ preOn }}" hint-placeholder-val="{{ true }}">
+  <div style="{{ preWrapStyle }}">
+    <div style="display:flex;align-items:center;gap:18px;">
+      <span style="font:400 19px/1 'JetBrains Mono',monospace;color:#3A3A36;">[</span>
+      <div style="position:relative;width:min(148px,22vw);height:1px;background:rgba(14,14,14,.18);">
+        <div style="{{ preBarStyle }}"></div>
+      </div>
+      <span style="font:400 19px/1 'JetBrains Mono',monospace;color:#3A3A36;">]</span>
+      <sc-if value="{{ preFull }}" hint-placeholder-val="{{ true }}">
+        <span style="{{ preNumStyle }}">{{ preNum }}</span>
+      </sc-if>
+    </div>
+    <div style="{{ preFootStyle }}"><div style="position:absolute;left:0;right:0;bottom:clamp(60px,18vh,190px);display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;gap:clamp(24px,7vw,120px);padding:0 clamp(24px,8vw,160px);">
+      <span style="justify-self:end;font:500 13px/1 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#4A4A46;">Common Places</span>
+      <span style="justify-self:center;font:500 13px/1 'JetBrains Mono',monospace;letter-spacing:.22em;color:#A9A69E;white-space:nowrap;">{{ preCount }}</span>
+      <span style="justify-self:start;font:500 13px/1 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#3A3A36;">Portfolio'26</span>
+    </div></div>
+  </div>
+</sc-if>
+
+<div ref="{{ roomRef }}" style="{{ roomStyle }}">
+
+  <div data-eb-grain="1" ref="{{ grainRef }}" style="position:absolute;inset:0;z-index:6;pointer-events:none;mix-blend-mode:multiply;opacity:.31;background-size:200px 200px;background-repeat:repeat;"></div>
+
+  <svg width="0" height="0" style="position:absolute;width:0;height:0;pointer-events:none;" aria-hidden="true">
+    <defs>
+      <filter id="eb-wind-s-0" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.030 0.044" numOctaves="3" seed="3" result="n">
+          <animate attributeName="baseFrequency" dur="15s" values="0.030 0.044;0.044 0.030;0.030 0.044" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3">
+          <animate attributeName="scale" dur="11s" values="2.2;3.8;2.2" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-s-1" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.038 0.032" numOctaves="3" seed="17" result="n">
+          <animate attributeName="baseFrequency" dur="18s" values="0.038 0.032;0.026 0.048;0.038 0.032" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3">
+          <animate attributeName="scale" dur="13s" values="3.6;2;3.6" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-s-2" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.028 0.048" numOctaves="3" seed="41" result="n">
+          <animate attributeName="baseFrequency" dur="21s" values="0.028 0.048;0.045 0.034;0.028 0.048" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3">
+          <animate attributeName="scale" dur="16s" values="2.4;4;2.4" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-s-3" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.041 0.030" numOctaves="3" seed="73" result="n">
+          <animate attributeName="baseFrequency" dur="17s" values="0.041 0.030;0.029 0.044;0.041 0.030" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3">
+          <animate attributeName="scale" dur="12s" values="3.4;2.1;3.4" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-0" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.020 0.029" numOctaves="3" seed="3" result="n">
+          <animate attributeName="baseFrequency" dur="15s" values="0.020 0.029;0.029 0.020;0.020 0.029" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="10">
+          <animate attributeName="scale" dur="11s" values="7.5;13;7.5" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-1" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.025 0.022" numOctaves="3" seed="17" result="n">
+          <animate attributeName="baseFrequency" dur="18s" values="0.025 0.022;0.017 0.032;0.025 0.022" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="11">
+          <animate attributeName="scale" dur="13s" values="12.5;7;12.5" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-2" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.019 0.033" numOctaves="3" seed="41" result="n">
+          <animate attributeName="baseFrequency" dur="21s" values="0.019 0.033;0.030 0.023;0.019 0.033" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="10">
+          <animate attributeName="scale" dur="16s" values="8;14;8" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-3" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.027 0.020" numOctaves="3" seed="73" result="n">
+          <animate attributeName="baseFrequency" dur="17s" values="0.027 0.020;0.019 0.030;0.027 0.020" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="11">
+          <animate attributeName="scale" dur="12s" values="12;7.5;12" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <!-- index piles, two strengths: the -g set moves the whole piece (white
+           mount and border included) only gently, and the -m set adds the rest
+           of the movement to the sheet inside it, so the paper still breathes
+           while the frame stays nearly still. Same seeds and cycles, so the two
+           layers move as one breeze. -->
+      <filter id="eb-wind-g-0" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.020 0.029" numOctaves="3" seed="3" result="n">
+          <animate attributeName="baseFrequency" dur="15s" values="0.020 0.029;0.029 0.020;0.020 0.029" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3.5">
+          <animate attributeName="scale" dur="11s" values="2.6;4.5;2.6" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-g-1" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.025 0.022" numOctaves="3" seed="17" result="n">
+          <animate attributeName="baseFrequency" dur="18s" values="0.025 0.022;0.017 0.032;0.025 0.022" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3.9">
+          <animate attributeName="scale" dur="13s" values="4.4;2.4;4.4" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-g-2" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.019 0.033" numOctaves="3" seed="41" result="n">
+          <animate attributeName="baseFrequency" dur="21s" values="0.019 0.033;0.030 0.023;0.019 0.033" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3.5">
+          <animate attributeName="scale" dur="16s" values="2.8;4.9;2.8" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-g-3" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.027 0.020" numOctaves="3" seed="73" result="n">
+          <animate attributeName="baseFrequency" dur="17s" values="0.027 0.020;0.019 0.030;0.027 0.020" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" xChannelSelector="R" yChannelSelector="G" scale="3.9">
+          <animate attributeName="scale" dur="12s" values="4.2;2.6;4.2" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-m-0" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.014 0.021" numOctaves="3" seed="3" result="n0">
+          <animate attributeName="baseFrequency" dur="19s" values="0.014 0.021;0.023 0.015;0.014 0.021" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="16" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="11" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="19">
+          <animate attributeName="scale" dur="13s" values="13.5;25;13.5" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-m-1" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.019 0.016" numOctaves="3" seed="17" result="n0">
+          <animate attributeName="baseFrequency" dur="22s" values="0.019 0.016;0.012 0.025;0.019 0.016" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="16" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="11" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="21">
+          <animate attributeName="scale" dur="15s" values="24;14;24" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-m-2" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.013 0.024" numOctaves="3" seed="41" result="n0">
+          <animate attributeName="baseFrequency" dur="25s" values="0.013 0.024;0.023 0.017;0.013 0.024" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="16" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="11" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="19">
+          <animate attributeName="scale" dur="18s" values="14;26;14" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-m-3" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.020 0.014" numOctaves="3" seed="73" result="n0">
+          <animate attributeName="baseFrequency" dur="21s" values="0.020 0.014;0.014 0.023;0.020 0.014" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="16" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="11" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="21">
+          <animate attributeName="scale" dur="14s" values="23;13;23" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+    <filter id="eb-wind-sm-0" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.014 0.021" numOctaves="3" seed="3" result="n0">
+          <animate attributeName="baseFrequency" dur="19s" values="0.014 0.021;0.023 0.015;0.014 0.021" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="13" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="9" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="13">
+          <animate attributeName="scale" dur="13s" values="9.5;17;9.5" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-sm-1" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.019 0.016" numOctaves="3" seed="17" result="n0">
+          <animate attributeName="baseFrequency" dur="22s" values="0.019 0.016;0.012 0.025;0.019 0.016" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="13" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="9" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="14">
+          <animate attributeName="scale" dur="15s" values="16.5;9.8;16.5" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-sm-2" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.013 0.024" numOctaves="3" seed="41" result="n0">
+          <animate attributeName="baseFrequency" dur="25s" values="0.013 0.024;0.023 0.017;0.013 0.024" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="13" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="9" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="13">
+          <animate attributeName="scale" dur="18s" values="9.8;18;9.8" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+      <filter id="eb-wind-sm-3" x="-55%" y="-55%" width="210%" height="210%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.020 0.014" numOctaves="3" seed="73" result="n0">
+          <animate attributeName="baseFrequency" dur="21s" values="0.020 0.014;0.014 0.023;0.020 0.014" repeatCount="indefinite"></animate>
+        </feTurbulence>
+        <feColorMatrix in="n0" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1" result="n"></feColorMatrix>
+        <feMorphology in="SourceAlpha" operator="erode" radius="13" result="core"></feMorphology>
+        <feGaussianBlur in="core" stdDeviation="9" result="soft"></feGaussianBlur>
+        <feComposite in="n" in2="soft" operator="in" result="nIn"></feComposite>
+        <feFlood flood-color="#808080" result="flat"></feFlood>
+        <feComposite in="nIn" in2="flat" operator="over" result="nm"></feComposite>
+        <feDisplacementMap in="SourceGraphic" in2="nm" xChannelSelector="R" yChannelSelector="G" scale="14">
+          <animate attributeName="scale" dur="14s" values="16;9.2;16" repeatCount="indefinite"></animate>
+        </feDisplacementMap>
+      </filter>
+    </defs>
+  </svg>
+
+
+  <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;z-index:20;display:flex;flex-direction:column;">
+
+      <div style="position:sticky;top:0;z-index:40;display:flex;flex-direction:column;gap:9px;padding:14px 20px 11px;background:rgba(245,248,239,.94);border-bottom:1px solid rgba(14,14,14,.08);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="{{ markStyle }}"></span>
+          <span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#0E0E0E;">Erik Liang</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+          <sc-for list="{{ mobNav }}" as="n" hint-placeholder-count="3">
+            <span onClick="{{ n.onClick }}" style="{{ n.style }}">{{ n.label }}</span>
+          </sc-for>
+          <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="min-height:44px;display:flex;align-items:center;font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#6A6862;text-decoration:none;">Etsy</a>
+        </div>
+      </div>
+
+      <sc-if value="{{ isIndex }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:30px;padding:26px 20px 64px;">
+          <h1 style="margin:0;font:600 27px/1.12 Archivo,sans-serif;letter-spacing:-.032em;color:#0E0E0E;text-wrap:pretty;">Reality, rebuilt in code.</h1>
+          <p style="margin:0;font:400 12px/1.75 'JetBrains Mono',monospace;letter-spacing:.045em;color:#4A4A46;text-wrap:pretty;">Photo art and geometric art, printed A3 and A2 on cotton rag. Ordinary places pushed until the colour carries what the moment had.</p>
+          <sc-for list="{{ mobWalls }}" as="w" hint-placeholder-count="2">
+            <div onClick="{{ w.onClick }}" style="{{ w.wrapStyle }}">
+              <div style="{{ w.frameStyle }}"><div style="{{ w.imgStyle }}"></div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <span style="{{ w.numStyle }}">{{ w.n }}</span>
+                <h2 style="margin:0;font:600 21px/1.1 Archivo,sans-serif;letter-spacing:-.03em;color:#0E0E0E;">{{ w.line }}</h2>
+                <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4A4A46;">{{ w.meta }}</span>
+                <span style="{{ w.ctaStyle }}">{{ w.cta }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:flex;flex-direction:column;gap:12px;padding-top:6px;border-top:1px solid rgba(14,14,14,.10);">
+            <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Light caught, then rebuilt by hand</span>
+            <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="align-self:flex-start;min-height:44px;display:flex;align-items:center;font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#4A4A46;text-decoration:none;border-bottom:1px solid rgba(14,14,14,.18);">Available at CommonPlacesArtSpace, Etsy</a>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:26px;padding:24px 20px 72px;">
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <span style="{{ mobAccentStyle }}">{{ mobTotal }} prints</span>
+            <h2 style="margin:0;font:600 23px/1.1 Archivo,sans-serif;letter-spacing:-.03em;color:#0E0E0E;text-wrap:pretty;">{{ mobTitle }}</h2>
+            <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4A4A46;">{{ mobMeta }}</span>
+          </div>
+          <sc-for list="{{ mobItems }}" as="it" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:11px;">
+              <sc-if value="{{ it.showYear }}" hint-placeholder-val="{{ false }}">
+                <span style="{{ mobYearStyle }}">{{ it.year }}</span>
+              </sc-if>
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="flex:1;min-width:0;font:500 13.5px/1.25 Archivo,sans-serif;letter-spacing:-.005em;color:#0E0E0E;">{{ it.title }}</span>
+                <span style="flex:none;font:400 9.5px/1 'JetBrains Mono',monospace;color:#6A6862;">{{ it.idx }}</span>
+              </div>
+              <div onClick="{{ it.onClick }}" style="{{ it.frameStyle }}"><div style="{{ it.imgStyle }}"></div></div>
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font:400 9px/1.4 'JetBrains Mono',monospace;letter-spacing:.11em;text-transform:uppercase;color:#4A4A46;">{{ it.capB }}</span>
+                <span style="font:400 8.5px/1.4 'JetBrains Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#6A6862;">{{ it.capC }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasMobOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;inset:0;z-index:150;background:#FFFFFF;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div style="position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 14px;background:rgba(255,255,255,.96);border-bottom:1px solid rgba(14,14,14,.10);">
+            <span style="font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#6A6862;">{{ mobOpen.idx }} / {{ mobTotal }} — {{ mobOpen.year }}</span>
+            <span onClick="{{ closePiece }}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#0E0E0E;border:1px solid rgba(14,14,14,.14);border-radius:2px;">✕</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:15px;padding:18px 18px 44px;">
+            <div style="{{ mobOpen.sheetImgStyle }}" role="img" aria-label="{{ mobOpen.title }}"></div>
+            <h3 style="margin:0;font:600 24px/1.08 Archivo,sans-serif;letter-spacing:-.032em;color:#0E0E0E;text-wrap:pretty;">{{ mobOpen.title }}</h3>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid rgba(14,14,14,.16);">
+              <sc-for list="{{ mobOpen.metaRows }}" as="m" hint-placeholder-count="3">
+                <div style="display:flex;gap:12px;font:400 10.5px/1.5 'JetBrains Mono',monospace;color:#3A3A36;"><span style="width:64px;flex:none;color:#6A6862;">{{ m.label }}</span><span style="min-width:0;">{{ m.value }}</span></div>
+              </sc-for>
+            </div>
+            <p style="margin:0;font:400 14.5px/1.65 Archivo,sans-serif;color:#232320;text-wrap:pretty;">{{ mobOpen.body1 }}</p>
+            <p style="margin:0;font:400 14.5px/1.65 Archivo,sans-serif;color:#4A4A46;text-wrap:pretty;">{{ mobOpen.body2 }}</p>
+            <p style="margin:0;font:400 14px/1.7 Archivo,sans-serif;color:#3A3A36;text-wrap:pretty;">{{ mobOpen.body4 }}</p>
+            <p style="margin:2px 0 0;font:400 10.5px/1.65 'JetBrains Mono',monospace;letter-spacing:.03em;color:#6A6862;">{{ mobOpen.body3 }}</p>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid rgba(14,14,14,.10);">
+              <span style="font:500 9px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Hanging</span>
+              <span style="font:400 12px/1.6 Archivo,sans-serif;color:#4A4A46;">{{ mobOpen.hangNote }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid rgba(14,14,14,.10);">
+              <span style="font:500 9px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Print &amp; despatch</span>
+              <sc-for list="{{ mobOpen.makeRows }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex;gap:12px;font:400 10px/1.5 'JetBrains Mono',monospace;color:#4A4A46;"><span style="width:64px;flex:none;color:#6A6862;">{{ r.label }}</span><span style="min-width:0;">{{ r.value }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding-top:14px;border-top:1px solid rgba(14,14,14,.12);">
+              <div style="display:flex;gap:10px;">
+                <span onClick="{{ mobPrev }}" style="{{ mobStepStyle }}">← PREV</span>
+                <span onClick="{{ mobNext }}" style="{{ mobStepStyle }}">NEXT →</span>
+              </div>
+              <span style="{{ mobEditionStyle }}">{{ mobOpen.edition }}</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+  <div ref="{{ bandRef }}" style="{{ bandOuterStyle }}">
+
+    <nav style="{{ navWrapStyle }}">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <span onClick="{{ n.onClick }}" style="{{ n.style }}" style-hover="color:#0E0E0E;">{{ n.label }}</span>
+      </sc-for>
+      <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#6A6862;text-decoration:none;border-bottom:none;transition:color 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;">Etsy</a>
+    </nav>
+
+    <div style="{{ bandHeadlineStyle }}">
+      <span style="{{ navHeadlineStyle }}">Reality, rebuilt in code.</span>
+    </div>
+
+    <div style="{{ bandCentreStyle }}">
+      <span style="display:flex;align-items:center;gap:8px;font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#0E0E0E;"><span style="{{ markStyle }}"></span>Erik Liang</span>
+      <p style="margin:0;font:400 11.5px/1.75 'JetBrains Mono',monospace;letter-spacing:.055em;color:#4A4A46;text-wrap:pretty;">Photo art and geometric art, printed A3 and A2 on cotton rag. Ordinary places pushed until the colour carries what the moment had.</p>
+    </div>
+
+    <div style="{{ bandRightStyle }}">
+      <span style="font:400 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#6A6862;">{{ time }} · Melbourne</span>
+      <span style="font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#0E0E0E;">27 Prints</span>
+      <span style="font:400 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#6A6862;">2023—2026</span>
+    </div>
+
+  </div>
+
+  <sc-for list="{{ zones }}" as="z" hint-placeholder-count="2">
+    <div style="{{ z.paneStyle }}">
+
+      <sc-if value="{{ z.isIntro }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ z.clusterWrapStyle }}">
+          <div onClick="{{ z.onEnter }}" onMouseEnter="{{ z.onHover }}" onMouseLeave="{{ z.offHover }}" style="{{ z.clusterGroupStyle }}">
+            <div style="{{ z.stackStyle }}">
+              <sc-for list="{{ z.peek }}" as="p" hint-placeholder-count="3">
+                <div data-eb-plate="1" style="{{ p.frameStyle }}"><div style="{{ p.imgStyle }}"></div></div>
+              </sc-for>
+            </div>
+            <div ref="{{ z.capRef }}" style="{{ z.clusterCapStyle }}">
+              <h1 style="{{ z.clusterTitleStyle }}">{{ z.line1 }} {{ z.line2 }}</h1>
+              <span style="{{ z.clusterMetaStyle }}">{{ z.clusterMeta }}</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ z.isSpine }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ z.spineGhostWrapStyle }}">
+          <div data-eb-mirror="1" data-eb-mirror-off="{{ z.spineMirrorOff }}" style="{{ z.spineMirrorTrackStyle }}">
+            <sc-for list="{{ z.spineMirror }}" as="g" hint-placeholder-count="0">
+              <div style="{{ g.style }}"><div style="{{ g.imgStyle }}"></div></div>
+            </sc-for>
+          </div>
+        </div>
+        <div onClick="{{ z.onEnter }}" style="{{ z.spineWrapStyle }}" style-hover="backdrop-filter:blur(22px) saturate(1.08);background:rgba(245,248,239,.32);">
+          <span style="{{ z.spineLabelStyle }}">{{ z.spineShortLabel }}</span>
+          <div style="{{ z.spineLineStyle }}"></div>
+          <span style="{{ z.spineArrowStyle }}" style-hover="background:rgba(255,255,255,.38);border-color:rgba(14,14,14,.30);box-shadow:0 1px 2px rgba(14,14,14,.07),0 10px 24px rgba(14,14,14,.12);">{{ z.spineArrow }}</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ z.isActive }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
+          <div style="{{ z.railHeadStyle }}">
+            <div style="display:flex;align-items:baseline;gap:16px;min-width:0;">
+              <h2 style="margin:0;font:600 clamp(20px,2.2vw,30px)/1 Archivo,sans-serif;letter-spacing:-.035em;white-space:nowrap;">{{ z.line1 }} {{ z.line2 }}</h2>
+            </div>
+            <div style="flex:none;display:flex;align-items:center;gap:8px;">
+              <span style="font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#4A4A46;text-transform:uppercase;margin-right:6px;">Drag · scroll</span>
+              <span onClick="{{ z.onPrev }}" style="{{ z.navBtnStyle }}" style-hover="border-color:rgba(14,14,14,.16);color:#0E0E0E;box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);x rgba(14,14,14,.10);transform:translateY(-1px);">←</span>
+              <span onClick="{{ z.onNext }}" style="{{ z.navBtnStyle }}" style-hover="border-color:rgba(14,14,14,.16);color:#0E0E0E;box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">→</span>
+            </div>
+          </div>
+
+          <div ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;">
+            <div style="{{ z.trackStyle }}">
+              <div data-eb-base="{{ z.baseOver }}" style="{{ z.baselineStyle }}"></div>
+              <sc-for list="{{ z.marks }}" as="m" hint-placeholder-count="6">
+                <span data-eb-year="{{ m.anchor }}" style="{{ m.style }}">{{ m.label }}</span>
+              </sc-for>
+              <sc-for list="{{ z.items }}" as="it" hint-placeholder-count="11">
+                <div style="{{ it.hookStyle }}">
+                  <svg width="20" height="{{ it.hookH }}" viewBox="0 0 20 {{ it.hookH }}" style="display:block;overflow:visible;">
+                    <path d="{{ it.hookD }}" style="{{ it.wireStyle }}"></path>
+                  </svg>
+                </div>
+                <div style="{{ it.stemStyle }}"></div>
+                <div data-eb-lab="1" style="{{ it.labelStyle }}">
+                  <div data-eb-cap1="1" style="{{ it.labelHeadStyle }}">
+                    <span style="font:500 11.5px/1.25 Archivo,sans-serif;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.title }}</span>
+                    <span style="flex:none;font:400 9.5px/1 'JetBrains Mono',monospace;color:#6A6862;">{{ it.idx }}</span>
+                  </div>
+                  <div style="display:flex;align-items:baseline;gap:7px;white-space:nowrap;overflow:hidden;">
+                    <span data-eb-cap2="1" style="flex:none;font:400 9px/1.2 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A4A46;">{{ it.capB }}</span>
+                    <span data-eb-cap3="1" style="flex:1;min-width:0;font:400 8.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#6A6862;overflow:hidden;text-overflow:ellipsis;">{{ it.capC }}</span>
+                  </div>
+                </div>
+                <div onClick="{{ it.onClick }}" onMouseEnter="{{ it.onEnterCard }}" onMouseLeave="{{ it.onLeaveCard }}" data-eb-card="1" data-eb-open="{{ it.openFlag }}" style="{{ it.cardStyle }}">
+                <div style="{{ it.swingStyle }}">
+                <div data-eb-tilt="{{ it.tiltF }}" style="{{ it.tiltStyle }}">
+                <div style="{{ it.innerStyle }}">
+                  <sc-if value="{{ it.isClosed }}" hint-placeholder-val="{{ true }}">
+                    <div style="{{ it.plateStyle }}" role="img" aria-label="{{ it.title }}"></div>
+                  </sc-if>
+                </div>
+                </div>
+                </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ z.hasOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ z.openPanelStyle }}">
+                    <div style="display:flex;width:100%;height:100%;">
+                      <div style="{{ z.open.openPlateStyle }}">
+                        <div style="{{ z.open.openImgStyle }}" role="img" aria-label="{{ z.open.title }}"></div>
+                        <div style="{{ z.open.metaBoxStyle }}">
+                          <sc-for list="{{ z.open.metaRows }}" as="m" hint-placeholder-count="3">
+                            <div style="display:flex;gap:12px;font:400 10.5px/1.5 'JetBrains Mono',monospace;color:#3A3A36;"><span style="width:64px;flex:none;color:#6A6862;">{{ m.label }}</span><span style="min-width:0;">{{ m.value }}</span></div>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:24px 22px 0;overflow:hidden;">
+                        <div style="{{ z.open.lineStyle1 }}">
+                          <span style="{{ z.eyebrowStyle }}">{{ z.open.idx }} / {{ z.total }} — {{ z.open.year }}</span>
+                          <span onClick="{{ closePiece }}" style="cursor:pointer;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;padding:8px 13px;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">✕ CLOSE</span>
+                        </div>
+                        <h3 style="{{ z.open.titleStyle }}">{{ z.open.title }}</h3>
+                        <div data-eb-body="1" style="{{ z.open.bodyStyle }}">
+                          <p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#232320;">{{ z.open.body1 }}</p>
+                          <p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#4A4A46;">{{ z.open.body2 }}</p>
+                          <p style="margin:0;font:400 13.5px/1.65 Archivo,sans-serif;color:#3A3A36;">{{ z.open.body4 }}</p>
+                          <p style="margin:8px 0 0;font:400 10.5px/1.6 'JetBrains Mono',monospace;letter-spacing:.03em;color:#6A6862;">{{ z.open.body3 }}</p>
+                          <div style="margin:6px 0 0;display:flex;align-items:baseline;gap:9px;padding-top:10px;border-top:1px solid rgba(14,14,14,.10);">
+                            <span style="flex:none;font:500 9px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Hanging</span>
+                            <span style="font:400 11.5px/1.5 Archivo,sans-serif;color:#4A4A46;">{{ z.open.hangNote }}</span>
+                          </div>
+                          <div style="margin:10px 0 2px;display:flex;flex-direction:column;gap:5px;padding-top:10px;border-top:1px solid rgba(14,14,14,.10);">
+                            <span style="font:500 9px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Print &amp; despatch</span>
+                            <sc-for list="{{ z.open.makeRows }}" as="r" hint-placeholder-count="5">
+                              <div style="display:flex;gap:12px;font:400 10px/1.5 'JetBrains Mono',monospace;color:#4A4A46;"><span style="width:64px;flex:none;color:#6A6862;">{{ r.label }}</span><span style="min-width:0;">{{ r.value }}</span></div>
+                            </sc-for>
+                          </div>
+                        </div>
+                        <div style="flex:none;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:11px 0 18px;border-top:1px solid rgba(14,14,14,.12);">
+                          <div style="display:flex;gap:20px;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#4A4A46;">
+                            <span onClick="{{ z.onPrev }}" style="cursor:pointer;" style-hover="color:#0E0E0E;">← PREV</span>
+                            <span onClick="{{ z.onNext }}" style="cursor:pointer;" style-hover="color:#0E0E0E;">NEXT →</span>
+                          </div>
+                          <span style="{{ z.priceStyle }}">{{ z.open.edition }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+          </sc-if>
+
+        </div>
+      </sc-if>
+
+    </div>
+  </sc-for>
+
+  <sc-if value="{{ isIndex }}" hint-placeholder-val="{{ true }}">
+    <div style="{{ footRowStyle }}">
+      <span style="{{ footEyebrowStyle }}">Light caught, then rebuilt by hand</span>
+      <span style="font:400 10px/1 'JetBrains Mono',monospace;color:#A9A69E;">·</span>
+      <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;color:#4A4A46;text-transform:uppercase;text-decoration:none;border-bottom:1px solid rgba(14,14,14,.18);padding-bottom:3px;transition:color 280ms cubic-bezier(.16,.84,.32,1),border-color 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.45);">Available at CommonPlacesArtSpace, Etsy</a>
+    </div>
+  </sc-if>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const IMG = (id, w) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
+
+const PHOTOS = [
+  ["1-4FCFO8xi0vuhXIRzlCZRu9GcAh_ZAfi", "Sun Theatre", "2024", "iPhone, dusk", "Photoshop — channel push, 11 layers", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A neon marquee I have walked past a thousand times without looking up. The sign was already loud; the edit only agreed with it, pulling the sun to sodium orange and the sky to a blue that never existed over this street.",
+   "This is where the series found its rule: never invent a subject, only raise the volume on one that was already there.",
+   "29.7 × 42cm; the orange channel runs one stop hotter than the file, to hold under gallery light."],
+  ["14EatizH9vS2_x9Spxhaa0ad56O9_5ePS", "Nursery, Overgrown", "2023", "iPhone, overcast", "Photoshop — 14 layers, selective hue", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A suburban plant nursery in the week it closed. Everything had grown past the price tags, so I let the greens go violet — the colour of a place no longer being maintained.",
+   "Decay is usually photographed in brown. I wanted to see whether it could be photographed in ultraviolet.",
+   "29.7 × 42cm; the violet shift is a Lab-channel rotation, not a filter — it survives reprint after reprint."],
+  ["1Pu7bn0daRsARa7yaJD1h-dQQqNBFizze", "Corner Café, 3pm", "2024", "iPhone, window light", "Photoshop — posterised midtones", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "The dead hour between lunch and close, when a room is just furniture. Flattening the midtones turned the chairs into shapes and the shapes into a composition that the actual afternoon did not have.",
+   "Emptiness is the easiest thing to photograph and the hardest to make anyone look at.",
+   "29.7 × 42cm; posterised to six tonal steps, the fewest the paper would hold without banding."],
+  ["1qWuyLhPM1EdMsqE79FuM8MvzqB2Vv1e1", "Under Glass", "2025", "iPhone, midday", "Photoshop — 19 layers, glass mask", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "Spotted sculptural forms under an atrium roof, shot straight up into the lattice. The dots were already there; I simply refused to let the daylight wash them out.",
+   "Architecture and artwork were fighting for the frame, so I stopped refereeing and printed the argument.",
+   "29.7 × 42cm; the lattice shadow is registered to within two pixels across all 25 in the edition."],
+  ["1-jmSg0B7xuvXJE3xM4qmXJaC4UPaJdQr", "Last Orders", "2023", "iPhone 12, handheld", "Photoshop — 16 layers, contrast mask", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A bar after the last customer, lit only by the shelf. I pushed the amber until the whole room read as one warm object with a row of cold stools in front of it.",
+   "Interiors remember their crowds. The edit is how I photograph the people who have just left.",
+   "29.7 × 42cm; the amber is pushed until the stools read as the only cool object left in the frame."],
+  ["1f3Aa_dod-TRKVYu3xta4ra9dQIREv3Nz", "Polka Dot Weather", "2025", "iPhone 14 Pro, backlit", "Photoshop — dot overlay, 12 layers", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "Shot through a dotted shopfront decal, with a stranger's silhouette landing exactly in the gap. The dots are physical; the cyan is not.",
+   "The closest the photographic work comes to the geometric work — a found halftone, printed as is.",
+   "29.7 × 42cm; the decal's dots are actual size on the print — nothing scaled, nothing redrawn."],
+  ["1VMLuvWWUPSXlxtwhDLCft5Jn5vFGw8gx", "Blue Door, Tiled Hall", "2024", "iPhone, available light", "Photoshop — 9 layers, masked curves", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A colonnade running to a single closed door. The tiles did the perspective work for me, so the only decision left was how blue to make the thing I could not open.",
+   "I keep returning to corridors. They are the one architectural form that admits it is about waiting.",
+   "29.7 × 42cm; the vanishing point sits a third in from the left — the one frame in the series that isn't centred."],
+  ["1hcPBTUgaV_uExSVdab1FlpqIpNGF6NM2", "River Houses", "2023", "iPhone, morning", "Photoshop — split tone, 13 layers", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "Boat sheds on a green river, photographed from a bridge in the ten minutes before the water went flat. Raising the green made the buildings look like they were floating on a lawn.",
+   "Landscape is the genre I trust least, so I treat it as a set of coloured planes instead.",
+   "29.7 × 42cm; the green shift is graded, not flat — three stops lighter at the waterline than the roofline."],
+  ["1nLe6qXblVtxN2p27k8QljaCWPIrJdJ9f", "Umbrella Season", "2025", "iPhone 15 Pro, noon", "Photoshop — 17 layers, blue lift", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A row of hired umbrellas along a river path, all the same blue, all slightly out of line. The repetition was the subject before I had done anything to it.",
+   "When a scene is already a pattern, my job is only to stop the light from hiding it.",
+   "29.7 × 42cm; every umbrella is the same file's blue, sampled once and locked for the whole edition."],
+  ["1AePtjDSEgqJfu6dE3T1M-PagncR1ruJa", "Wall and Willow", "2024", "iPhone, hard sun", "Photoshop — 10 layers, highlight recovery", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "A white wall with a tree falling over it, exposed for the shadow rather than the render. Most of this frame is blown out on purpose.",
+   "Overexposure is a way of deciding what is not important, in advance, in public.",
+   "29.7 × 42cm; the blown highlight covers roughly a third of the frame — the largest in the series."],
+  ["1U-mNZYc4d1XE0BLhsFf_9VaIg3yDqWa7", "Orange Pier", "2026", "iPhone 15 Pro, sunset", "Photoshop — duotone, 8 layers", "A3 · archival matte", "Ed. 25 + 2 AP",
+   "The newest photograph here and the most reduced: a jetty, a skyline, and one flat field of orange where a sky used to be.",
+   "This is the photograph that walks furthest toward the geometric work — two colours, one edge, nothing left to remove.",
+   "29.7 × 42cm; the horizon sits exactly on the paper's centreline, the one deliberate symmetry in the photographic set."]
+];
+
+const GEN = [
+  ["1ZtT4_7EajAoohSVJ4Rot0uMcgeUpx5AJ", "Signal Lattice", "2023", "p5.js — grid sampling", "A3 · giclée on cotton rag", "Ed. 30",
+   "The first system I let run unsupervised: a square grid sampled at a frequency slightly off its own, so every cell reads a value meant for its neighbour.",
+   "Everything in this half of the practice comes from that mistake — a machine reading the wrong address, precisely.",
+   "29.7 × 42cm; the sampling offset is 1.07 cells — 1.0 produced no visible error at all."],
+  ["1-i_fXfUfnJPLxpHD3ECxrpfcWMdr4XLX", "Standing Wave", "2023", "Processing — radial phase", "A3 · giclée on cotton rag", "Ed. 30",
+   "Concentric bands driven by two frequencies that nearly agree. Where they disagree, the rings buckle into a shape that looks organic and is not.",
+   "I never draw the form. I choose two numbers and wait to see what they make of each other.",
+   "29.7 × 42cm; the two frequencies differ by 3%, the smallest gap that still buckles visibly."],
+  ["1HlGa4DXKsI_d_kp7htXvtvJLfHWMUudd", "Starburst Halftone", "2024", "GLSL — moiré sampling", "A3 · giclée on cotton rag", "Ed. 30",
+   "A radial burst resampled through a fixed dot screen, so the rays fracture into the screen's own geometry rather than their own.",
+   "Halftone is usually the last step before printing. Here it is the subject.",
+   "29.7 × 42cm; the dot screen sits at 37°, the angle that fractured the rays most evenly."],
+  ["1zPGT9YWsSsVwZ6n5AgjIXCBBAgS7ZDdT", "Cell Field", "2024", "p5.js — Voronoi relaxation", "A3 · giclée on cotton rag", "Ed. 30",
+   "Seed points repelled from one another until they stop moving, then each cell outlined in the same weight regardless of size.",
+   "Uniform line over non-uniform structure. The eye reads it as growth; the code only knows about distance.",
+   "29.7 × 42cm; 214 seed points relaxed over 400 iterations before the outline pass ran."],
+  ["124Ubqyg014Vo7qD6YWmZx5VwpG40b0Ei", "Red Spine", "2024", "Processing — bilateral symmetry", "A2 · giclée on cotton rag", "Ed. 20",
+   "A single vertical axis with everything mirrored across it, then one channel offset by three pixels so the mirror is not quite honest.",
+   "Perfect symmetry is inert. The whole piece lives in the three pixels where it fails.",
+   "42 × 59.4cm; the offset channel is exactly 3px at this print size, invisible at anything smaller."],
+  ["1aF9EXuqz7T_zaPWZiZJeKQ-Y-FLvHAJ-", "Concentric Yellow", "2025", "GLSL — interference", "A2 · giclée on cotton rag", "Ed. 20",
+   "Two elliptical wavefields at ninety degrees, rendered in two inks with no intermediate tone available.",
+   "Restricting the palette to two colours forces every decision into geometry, which is where I want it.",
+   "42 × 59.4cm; printed in two spot inks rather than four-colour, to keep the field genuinely flat."],
+  ["1JK2LfO9rNuDIFgtz-g4P9usg-z1g7q3T", "Four Petal", "2025", "p5.js — rotational symmetry", "A3 · giclée on cotton rag", "Ed. 30",
+   "One stroke, rotated four times, thickened where the rotations overlap. The dot screen underneath is at a different angle on purpose.",
+   "A form this simple only survives if the surface it sits on is doing something more complicated.",
+   "29.7 × 42cm; the underlying dot screen runs at 15° to the rotation, never parallel to any edge."],
+  ["1T-AAUI_bkQ81OofrJsQjkgQAgLINJQxe", "Magenta Bloom", "2025", "GLSL — reaction-diffusion", "A2 · giclée on cotton rag", "Ed. 20",
+   "Forty thousand simulation steps with three manual interventions, each raising the feed rate in one region. The scars are visible as denser flowering.",
+   "Simulations reward patience over composition. I mostly decide when to stop.",
+   "42 × 59.4cm; the simulation ran six hours — the print is one frame chosen from the last twenty minutes."],
+  ["1a2LqTq1IDGF6T0LXSOelUB1Bta0SP3IN", "Filament", "2026", "Rust — particle trails", "A2 · giclée on cotton rag", "Ed. 20",
+   "Nine hundred particles released from a point and dragged by a field they slowly deform. This is the frame before the solver lost stability.",
+   "Failure states are usually the most structurally honest thing a simulation produces.",
+   "42 × 59.4cm; the solver diverges one frame later — this is the last stable state before it does."],
+  ["1g7wQJZhghqDrBtifHOxHtyEqLJ4giEWE", "Acid Cells", "2024", "Processing — subdivision", "A3 · giclée on cotton rag", "Ed. 30",
+   "A plane subdivided until a random threshold stops it, every resulting cell redrawn as one closed curve.",
+   "The rule is trivial. The work is in choosing which unfairness to build into the stopping condition.",
+   "29.7 × 42cm; the subdivision threshold is reseeded per print — no two proofs before this one matched."],
+  ["1UhJdmUXi-3xlC7otRNcb9Gf2i0PhMYHM", "Lozenge Grid I", "2025", "p5.js — coupled oscillators", "A3 · giclée on cotton rag", "Ed. 30",
+   "Each cell holds a phase and is pulled toward its neighbours. Left alone the grid synchronises into nothing, so a slow drift keeps it unsettled.",
+   "A system that resolves is a finished system. I prefer one that keeps almost resolving.",
+   "29.7 × 42cm; the drift constant is small enough that the grid takes about four minutes to visibly desync."],
+  ["1kUDWOBQdDo0p4xswTMJVeXJwU1-MZmBh", "Lozenge Grid II", "2025", "p5.js — palette rotation", "A3 · giclée on cotton rag", "Ed. 30",
+   "The same structure as its predecessor, run again with the colour lookup rotated one step per row.",
+   "Serial work is how I check whether a system has anything left to say. This one did.",
+   "29.7 × 42cm; same seed as Lozenge Grid I, run 90 seconds further before this frame was taken."],
+  ["1e-7COyv6N5qBy5QpiDXSe_6iZQ2K9Lk3", "Circle Packing", "2026", "Processing — greedy packing", "A3 · giclée on cotton rag", "Ed. 30",
+   "Circles placed largest-first into a bounded disc, each one as big as the remaining gap allows. Nothing is arranged; everything is leftover.",
+   "Greedy algorithms produce compositions no designer would choose and most designers would accept.",
+   "29.7 × 42cm; 1,340 circles placed before the remaining gaps dropped below print resolution."],
+  ["11tMF1NLRJ-t-Ld6IhIrqZ4skyk7l_Bwj", "Firework Array", "2026", "p5.js — seeded burst grid", "A3 · giclée on cotton rag", "Ed. 30",
+   "Twelve radial bursts on a loose grid, each with its own seed, ray count and hue drawn from the same small palette.",
+   "Repetition with variation is the oldest trick in pattern-making. Code is simply the fastest way to be rigorous about it.",
+   "29.7 × 42cm; twelve seeds drawn from one palette of five hues, no seed repeated a hue adjacent to itself."],
+  ["1r6cnq7sMh959AK9Y22SIGCUksw4Pz0wM", "Radial Interference", "2026", "GLSL — phase gradient", "A2 · giclée on cotton rag", "Ed. 20",
+   "A single burst sampled through a gradient of phase offsets, so the rays desaturate as they travel outward.",
+   "The colour here is not chosen. It is the by-product of how far each ray had to go.",
+   "42 × 59.4cm; the phase gradient runs across 340° — the missing 20° is where the rays first fire."],
+  ["13XGqdUV3HYPWdCq085MIYMM9f_-jXN8I", "Soft Orbs", "2026", "GLSL + photographic plate", "A2 · giclée on cotton rag", "Ed. 20",
+   "The newest work and the only one that takes a photograph as input: a plate from Orange Pier read as a height field, then re-rendered as soft geometry.",
+   "This is the direction the whole practice is arguing for — reality and code as one material rather than two rooms.",
+   "42 × 59.4cm; the height field is read from Orange Pier at 8-bit depth, banding kept rather than smoothed."]
+];
+
+/* Catalogue notes — a fourth paragraph per work (what it does in a room) and a
+   one-line hanging note. Kept in their own map so the print rows stay readable,
+   and so Erik's real text can replace these without touching layout. */
+const NOTES = {
+  "Sun Theatre": ["Hung, it behaves like a small light source: the orange carries across a room and warms whatever sits under it, so it wants a wall you pass rather than one you sit facing. Under tungsten the sky reads closer to indigo than blue.", "Best at eye level in a hallway; leave 8cm of mount so the marquee keeps its edge."],
+  "Nursery, Overgrown": ["The violet is a slow read — most people see grey-green for a second, then the whole frame turns. It holds up in low light, which is unusual for a high-key photograph, and dulls if hung opposite a window.", "Give it a cool wall. Warm white paint fights the violet directly."],
+  "Corner Café, 3pm": ["A quiet print that gets stronger in company; the flattened midtones make it read as a shape study, so it pairs with almost anything without competing. The six tonal steps are visible at 40cm and invisible at two metres.", "Works in a group of three. On its own it needs a small wall, not a large one."],
+  "Under Glass": ["The lattice shadow gives it real depth for a flat image — from an angle the dots appear to sit above the paper. Direct sun destroys that effect within a few weeks, and the paper will go with it.", "Frame under glass, away from a north-facing window."],
+  "Last Orders": ["The warmest print in the set, and the only one that reads better at night. In daylight the amber flattens toward brown; under a lamp it comes back and the stools go properly cold.", "Hang where there is lamplight. It is a print for evenings."],
+  "Polka Dot Weather": ["The physical dots and the cyan sit on different planes, so the eye keeps swapping which one is the subject. It is the most graphic photograph here and the easiest to live with — closer to a poster than a picture.", "Tolerates a busy wall. The silhouette needs about 15cm of clear space on its left."],
+  "Blue Door, Tiled Hall": ["Corridor perspective does the work: at a distance it reads as a single blue plane, and only up close does the hall open. The off-centre vanishing point makes it sit better to the right of a doorway than the left.", "Needs viewing distance — at least two metres of floor in front of it."],
+  "River Houses": ["The graded green means the print changes with the height you hang it at; low on a wall the waterline dominates, higher and the roofs do. Of everything in the photographic set this is the one that most rewards being moved around.", "Try it lower than instinct suggests — the water is the subject."],
+  "Umbrella Season": ["A pattern print that holds its rhythm from across a room and rewards a close look with the small misalignments. Because every blue is the same sampled value, it sits flat and clean beside painted walls.", "Strong in a pair with Polka Dot Weather; the two blues are one step apart."],
+  "Wall and Willow": ["A third of the frame is paper white, so the print lends light rather than taking it — useful in a dim corner where most photographs die. The shadow drawing only resolves once your eyes adjust.", "Hang it where a room is darkest. Avoid a white wall; it needs contrast to sit against."],
+  "Orange Pier": ["The most reduced print here and the loudest from a distance: two colours, one edge, and a horizon dead on the centreline. It reads as a colour field until you are close enough to find the skyline.", "Give it a wall of its own. Anything hung beside it becomes a footnote."],
+  "Signal Lattice": ["The sampling error reads as a shimmer that never quite settles, so the print appears to move when you walk past it. Flat, even light suits it; a spotlight makes the shimmer collapse into a flat grid.", "Even light, no spot. It is a print to see peripherally."],
+  "Standing Wave": ["From two metres it is a set of calm rings; from forty centimetres the buckling is obvious and slightly uncomfortable. That gap between the two readings is the whole piece.", "Hang at a distance people walk past and then stop at — a stair landing works."],
+  "Starburst Halftone": ["The 37° screen means the rays break up differently depending on where you stand, and the print flickers in a way no photograph of it captures. Cotton rag holds the dots without spreading them.", "Frame without a mount if possible — the dots want to run to the edge."],
+  "Cell Field": ["The uniform line weight over uneven cells makes the whole surface read as one drawing rather than a diagram. It is the easiest geometric print to live with, and the least likely to date.", "Good above a desk. It rewards being seen daily rather than dramatically."],
+  "Red Spine": ["A2 gives the three-pixel offset room to register — at any smaller size the piece becomes a symmetrical ornament and loses its argument. The red sits forward of the wall by a noticeable amount.", "Hang centred on its own wall. Symmetry punishes an off-centre hang."],
+  "Concentric Yellow": ["Two spot inks and no intermediate tone, so the field is genuinely flat — this is the print that most looks printed rather than photographed. The yellow is bright enough to tint a pale wall beside it.", "Leave 30cm clear on either side. The yellow spreads further than the paper does."],
+  "Four Petal": ["Simple at a glance, then the dot screen underneath starts arguing with the form at 15°. It is the most decorative piece in the geometric set and knows it.", "Suits a small wall or an alcove. It does not need distance."],
+  "Magenta Bloom": ["The three interventions show as denser flowering, so there is a legible history in the surface once you know where to look. Reaction-diffusion prints read as organic at every distance, which makes this the warmest of the coded works.", "Pairs with Filament — the two share a palette and disagree about structure."],
+  "Filament": ["The last stable frame before the solver broke, which gives the trails a tension that a converged state would not have. At A2 the individual particle paths stay separable.", "Wants a dark or mid-toned wall; white flattens the trails."],
+  "Acid Cells": ["Each proof was reseeded, so this composition exists once — the closest the coded work comes to a unique print. The closed curves read as hand-drawn from across a room.", "A good first geometric print. It behaves like a drawing, not a diagram."],
+  "Lozenge Grid I": ["Built to almost resolve and never quite manage it, which makes it restful rather than static — the grid looks like it is about to agree with itself. It sits well in a working room.", "Hang as a pair with Lozenge Grid II, 6cm apart, I on the left."],
+  "Lozenge Grid II": ["Ninety seconds further into the same run, with the palette rotated one step per row, so the colour walks down the print. Beside its predecessor the difference is obvious; alone it reads as a different work entirely.", "The right-hand half of the pair. Alone, it needs a warmer wall than I does."],
+  "Circle Packing": ["Nothing is arranged and everything is leftover, which produces a balance no one would have drawn. The 1,340 circles hold their edges at arm's length and dissolve into tone from further back.", "Works at close quarters — a narrow wall, a reading corner."],
+  "Firework Array": ["Twelve seeds, one palette, no hue repeated next to itself, so the eye keeps finding order and losing it again. The busiest print in the set and the most cheerful.", "Needs a plain wall. It supplies all the incident a room can take."],
+  "Radial Interference": ["The desaturation is a by-product of distance travelled, not a colour decision, and it shows — the fall-off is more even than a hand would make it. The missing 20° reads as a quiet gap at the firing point.", "Hang high. The rays fire outward and want ceiling above them."],
+  "Soft Orbs": ["The only work built from a photograph, and the argument the whole practice is making: the banding from the 8-bit height field is kept rather than smoothed, so the coded surface admits where it came from. Hung near Orange Pier the relationship is unmistakable.", "Hang within sight of Orange Pier if you have both. Otherwise, alone."]
+};
+/* What every print shares — stock, ink, border, signing, despatch. Stated once,
+   since the answer genuinely does not vary from work to work. */
+const MAKE = {
+  photo: ["Paper", "Hahnemühle Photo Rag 308gsm, archival matte"],
+  gen: ["Paper", "Hahnemühle German Etching 310gsm, cotton rag"],
+  ink: ["Ink", "Pigment, 200-year lightfastness rating"],
+  border: ["Border", "12mm unprinted margin on all four sides"],
+  sign: ["Signed", "Pencil, recto lower right, numbered to the edition"],
+  ship: ["Despatch", "Made to order in Melbourne, 3–5 days, rolled in a rigid tube"]
+};
+
+const AR = 1.414;
+const HF = [0.68, 0.82, 0.60, 0.76, 0.64, 0.88, 0.70];
+const STEMF = [0.13, 0.24, 0.17, 0.28, 0.20, 0.15, 0.26];
+const GAP = 40;
+const SPINE = 76;
+/* the index's two piles: the inner gutter between them is deliberately tighter
+   than the outer margins, so the pair reads as one catalogue spread. */
+const IN_PAD = "clamp(14px,2.2vw,48px)";
+const OUT_PAD = "clamp(30px,5vw,110px)";
+
+/* Motion — 13 Sep contract. Deep ease-out, ceiling 1200ms, scrubbed values linear. */
+const EASE = "cubic-bezier(.16,.84,.32,1)";
+const D_MICRO = 280;
+const D_REVEAL = 620;
+const D_GROUND = 820;
+const D_HERO = 1040;
+const ST_FRAME = 60;
+const ST_CAP = 480;
+const ST_LINE = 90;
+
+class Component extends DCLogic {
+  state = { hoverIdx: null, mob: typeof window !== "undefined" && window.innerWidth < 760, zone: null, open: null, railW: 0, railH: 0, hover: null, roomW: 0, roomH: 0, capH: 0, bandH: 0, pre: 0, preGone: false, step: 0, wipe: false, time: "" };
+
+  constructor(props) {
+    super(props);
+    this.refs2 = { photo: React.createRef(), gen: React.createRef() };
+    this.grainRef = React.createRef();
+    this.roomRef = React.createRef();
+    this.bandRef = React.createRef();
+    this.capRefs = { photo: React.createRef(), gen: React.createRef() };
+    this.grainCanvas = null;
+    this.drag = null;
+    this.stepT = null;
+    this.band = 0;
+    this.onScrollRail = () => this.queueScrub();
+    this.onWinResize = () => { this.setState({ railW: 0, railH: 0, mob: window.innerWidth < 760 }); };
+  }
+
+  /* animated grain: redraws a small value-noise tile and repaints it as the
+     wall's background-image on an interval — same 231-255 tone and .31 multiply
+     as the static wall-tooth.png, just alive. Trial per Charles's "try it" —
+     wall-tooth.png stays on disk untouched until this is confirmed. */
+  tickGrain = () => {
+    if (this.state.mob) return;
+    const c = this.grainCanvas, ctx = c.getContext("2d");
+    const img = ctx.createImageData(c.width, c.height);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 231 + Math.floor(Math.random() * 25);
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    const node = this.grainRef.current;
+    if (node) node.style.backgroundImage = "url(" + c.toDataURL() + ")";
+  };
+
+  componentDidMount() {
+    window.addEventListener("resize", this.onWinResize);
+    window.addEventListener("mousemove", this.onDragMove);
+    window.addEventListener("mouseup", this.onDragEnd);
+    window.addEventListener("keydown", this.onKey);
+    this.attach();
+    this.queueScrub();
+    this.measureRoom();
+    this.measureCaps();
+    this.measureBand();
+    this.tickClock();
+    this.clockT = setInterval(this.tickClock, 1000);
+    /* the block must be measured with FINAL metrics: at mount the fallback face
+       wraps the nowrap segs and reports a block twice as tall, which starved the
+       clusters down to their floor. Fonts settling and any reflow re-measure. */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { this.measureCaps(); this.measureBand(); });
+    if (typeof ResizeObserver !== "undefined") {
+      /* the room's own box is the only honest measure of the hang: window
+         events do not fire for every container change, so watch the wall. */
+      this.roomRO = new ResizeObserver(this.measureRoom);
+      if (this.roomRef.current) this.roomRO.observe(this.roomRef.current);
+      this.bandRO = new ResizeObserver(this.measureBand);
+      if (this.bandRef.current) this.bandRO.observe(this.bandRef.current);
+      this.capRO = new ResizeObserver(this.measureCaps);
+      for (const k in this.capRefs) if (this.capRefs[k].current) this.capRO.observe(this.capRefs[k].current);
+    }
+    /* safety net: if the document timeline never advances, the entry keyframes
+       would leave the front door on opacity 0. Land it either way. */
+    this.entryT = setTimeout(() => {
+      document.querySelectorAll("[data-eb-line],[data-eb-plate]").forEach(n => {
+        n.style.animation = "none"; n.style.opacity = "1";
+      });
+    }, 1400);
+    /* the preload is the room's own measure arriving: it counts to 100 on the
+       contract curve's own patience, then wipes. No spinner, no logo. */
+    this.preStart = performance.now();
+    this.preT = setInterval(() => {
+      const t = Math.min(1, (performance.now() - this.preStart) / 1150);
+      const eased = 1 - Math.pow(1 - t, 2.1);
+      this.setState({ pre: Math.round(eased * 100) });
+      if (t >= 1) {
+        clearInterval(this.preT);
+    clearInterval(this.stepT);
+        /* the arrival starts on the count hitting 100, under the wipe — so the
+           room is already opening as the overlay leaves, with no still frame
+           in between. */
+        this.setState({ arrive: true });
+        setTimeout(() => this.setState({ preGone: true }), 620);
+      }
+    }, 40);
+    this.grainCanvas = document.createElement("canvas");
+    this.grainCanvas.width = 200;
+    this.grainCanvas.height = 200;
+    this.tickGrain();
+    this.grainT = setInterval(this.tickGrain, 90);
+  }
+
+  /* the front-door text block is measured, not guessed: the clusters take
+     whatever height is left under it, so the two never negotiate by clamp. */
+  measureRoom = () => {
+    const n = this.roomRef.current;
+    if (!n) return;
+    const w = Math.round(n.clientWidth), h = Math.round(n.clientHeight);
+    if (!w || !h) return;
+    if (Math.abs(w - this.state.roomW) > 1 || Math.abs(h - this.state.roomH) > 1) this.setState({ roomW: w, roomH: h });
+  };
+
+  /* the caption is measured, not estimated: a headline that takes a second
+     line must shrink the prints, never overrun the footer. Both clusters share
+     the taller caption so the pair stays symmetrical. */
+  measureCaps = () => {
+    let h = 0;
+    for (const k in this.capRefs) {
+      const n = this.capRefs[k].current;
+      if (n) h = Math.max(h, n.offsetHeight);
+    }
+    h = Math.round(h);
+    if (h && Math.abs(h - this.state.capH) > 1) this.setState({ capH: h });
+  };
+
+  /* the header band is measured, exactly as the text block is: the rail's own
+     head starts below it, so a title can never set over the nav. */
+  measureBand = () => {
+    const n = this.bandRef.current;
+    if (!n) return;
+    const h = Math.round(n.offsetHeight);
+    if (h && Math.abs(h - this.state.bandH) > 1) this.setState({ bandH: h });
+  };
+
+  tickClock = () => {
+    const t = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Melbourne", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+    if (t !== this.state.time) this.setState({ time: t });
+  };
+
+  componentDidUpdate() {
+    this.attach(); this.queueScrub();
+    if (this.roomRO && this.roomRef.current) { this.roomRO.disconnect(); this.roomRO.observe(this.roomRef.current); }
+    if (this.capRO) {
+      this.capRO.disconnect();
+      for (const k in this.capRefs) if (this.capRefs[k].current) this.capRO.observe(this.capRefs[k].current);
+    }
+    if (this.bandRO && this.bandRef.current) { this.bandRO.disconnect(); this.bandRO.observe(this.bandRef.current); }
+    this.measureRoom();
+    this.measureCaps();
+    this.measureBand();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.onWinResize);
+    window.removeEventListener("mousemove", this.onDragMove);
+    window.removeEventListener("mouseup", this.onDragEnd);
+    window.removeEventListener("keydown", this.onKey);
+    cancelAnimationFrame(this.raf);
+    cancelAnimationFrame(this.momRaf);
+    clearTimeout(this.scrubT);
+    clearTimeout(this.bandT);
+    clearInterval(this.grainT);
+    clearTimeout(this.entryT);
+    clearInterval(this.preT);
+    clearInterval(this.stepT);
+    clearInterval(this.clockT);
+    clearTimeout(this.closeT);
+    cancelAnimationFrame(this.glideRaf);
+    if (this.roomRO) this.roomRO.disconnect();
+    if (this.capRO) this.capRO.disconnect();
+    if (this.bandRO) this.bandRO.disconnect();
+    cancelAnimationFrame(this.swingRaf);
+  }
+
+  /* ---- rail-scrub engine: every frame's state is a function of rail position ---- */
+
+  queueScrub() {
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.scrubT);
+    /* the velocity loop is cheap and self-parking; any rail movement restarts it */
+    if (!this.swingRaf) this.swingRaf = requestAnimationFrame(this.swingTick);
+    this.raf = requestAnimationFrame(() => this.scrub());
+    this.scrubT = setTimeout(() => this.scrub(), 120);
+  }
+
+  scrub() {
+    const zone = this.state.zone;
+    if (!zone) return;
+    const el = this.refs2[zone].current;
+    if (!el) return;
+    const sl = el.scrollLeft, cw = el.clientWidth;
+    if (!cw) return;
+    const centre = sl + cw / 2;
+    const reach = cw * 0.42;
+
+    const labels = el.querySelectorAll("[data-eb-lab]");
+    el.querySelectorAll("[data-eb-card]").forEach((node, li) => {
+      const lab = labels[li];
+      const inner = node.firstElementChild;
+      if (!inner) return;
+      if (node.getAttribute("data-eb-open") === "1") {
+        inner.style.transform = "";
+        inner.style.boxShadow = "1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)";
+        return;
+      }
+      const mid = node.offsetLeft + node.offsetWidth / 2;
+      const d = Math.min(1, Math.abs(mid - centre) / reach);
+      const t = 1 - d * d * (3 - 2 * d);
+      inner.style.transform = "scale(" + (0.94 + 0.06 * t).toFixed(4) + ")";
+      /* two-layer cast: a tight contact shadow plus the long throw off the wall */
+      inner.style.boxShadow =
+        (1 + t * 0.6).toFixed(1) + "px " + (1 + t).toFixed(1) + "px " + (2 + 3 * t).toFixed(1) +
+        "px rgba(14,14,14," + (0.10 + 0.03 * t).toFixed(3) + "), " +
+        (5 + 6 * t).toFixed(1) + "px " + (14 + 16 * t).toFixed(1) + "px " + (30 + 26 * t).toFixed(1) +
+        "px rgba(14,14,14," + (0.13 + 0.07 * t).toFixed(3) + ")";
+      if (!lab) return;
+      /* the label resolves in three stages as the print walks to centre:
+         name always, then year/size/medium, then stock and edition. */
+      const ramp = (a, b) => Math.max(0, Math.min(1, (t - a) / (b - a))).toFixed(3);
+      const c1 = lab.querySelector("[data-eb-cap1]");
+      if (c1) c1.style.opacity = (0.55 + 0.45 * t).toFixed(3);
+      const c2 = lab.querySelector("[data-eb-cap2]");
+      if (c2) c2.style.opacity = ramp(0.26, 0.68);
+      const c3 = lab.querySelector("[data-eb-cap3]");
+      if (c3) c3.style.opacity = ramp(0.60, 0.94);
+    });
+
+    /* three planes: year numerals 0.35x, baseline 0.70x, frames 1x */
+    el.querySelectorAll("[data-eb-year]").forEach(n => {
+      const anchor = parseFloat(n.getAttribute("data-eb-year")) || 0;
+      const local = sl - (anchor - cw / 2);
+      const tx = Math.max(-cw * 0.34, Math.min(cw * 0.34, local * 0.65));
+      n.style.transform = "translateX(" + tx.toFixed(1) + "px)";
+    });
+    const mir = document.querySelector("[data-eb-mirror]");
+    if (mir) {
+      const off = parseFloat(mir.getAttribute("data-eb-mirror-off")) || 0;
+      mir.style.transform = "translateX(" + (off - sl).toFixed(1) + "px)";
+    }
+    const base = el.querySelector("[data-eb-base]");
+    if (base) {
+      const over = parseFloat(base.getAttribute("data-eb-base")) || 0;
+      base.style.transform = "translateX(" + Math.min(over, sl * 0.30).toFixed(1) + "px)";
+    }
+  }
+
+  /* ---- rubber band at both ends of the wall: resistance, then settle ---- */
+
+  bandBy(el, spill) {
+    const track = el.firstElementChild;
+    if (!track) return;
+    this.band = Math.max(-72, Math.min(72, this.band - spill * 0.24));
+    track.style.transition = "none";
+    track.style.transform = "translateX(" + this.band.toFixed(1) + "px)";
+    clearTimeout(this.bandT);
+    this.bandT = setTimeout(() => {
+      this.band = 0;
+      track.style.transition = "transform " + D_REVEAL + "ms " + EASE;
+      track.style.transform = "translateX(0px)";
+    }, 110);
+  }
+
+  /* ---- the walk's own wind: swing magnitude and direction from scroll velocity ---- */
+
+  swingTick = () => {
+    const zone = this.state.zone;
+    const el = zone ? this.refs2[zone].current : null;
+    if (!el) { this.swingRaf = 0; return; }
+    const sl = el.scrollLeft;
+    let dx = this.lastSl === undefined ? 0 : sl - this.lastSl;
+    this.lastSl = sl;
+    /* a room change or a jump to a year is not a breeze */
+    if (Math.abs(dx) > 400) dx = 0;
+    /* velocity is smoothed, then read as a target angle: the wall moving left
+       leaves the paper trailing right. A light spring carries the piece to that
+       angle and lets it overshoot back once the wall stops — direction comes from
+       the direction of travel, magnitude from its speed. */
+    this.sv = (this.sv || 0) * 0.84 + dx * 0.16;
+    const target = Math.max(-0.85, Math.min(0.85, -this.sv / 72));
+    /* a slow, heavy spring: low stiffness so the return takes about half a second
+       rather than a fifth of one, and enough damping that a hard flick ends in a
+       single soft overshoot instead of a shiver. */
+    this.saV = (this.saV || 0) + (target - (this.sa || 0)) * 0.05;
+    this.saV *= 0.76;
+    this.saV = Math.max(-0.075, Math.min(0.075, this.saV));
+    this.sa = (this.sa || 0) + this.saV;
+    if (Math.abs(this.sa) < 0.0005 && Math.abs(this.saV) < 0.0005) { this.sa = 0; this.saV = 0; }
+    if (this.sa !== this.saLast) {
+      this.saLast = this.sa;
+      el.querySelectorAll("[data-eb-tilt]").forEach(n => {
+        const card = n.closest("[data-eb-card]");
+        if (card && card.getAttribute("data-eb-open") === "1") { n.style.transform = ""; return; }
+        const f = parseFloat(n.getAttribute("data-eb-tilt")) || 1;
+        n.style.transform = this.sa ? "rotate(" + (this.sa * 1.5 * f).toFixed(3) + "deg)" : "";
+      });
+    }
+    this.swingRaf = requestAnimationFrame(this.swingTick);
+  };
+
+  attach() {
+    ["photo", "gen"].forEach(k => {
+      const el = this.refs2[k].current;
+      if (el && !el.__bound) { el.__bound = true; el.addEventListener("scroll", this.onScrollRail, { passive: true }); }
+    });
+    const el = this.state.zone ? this.refs2[this.state.zone].current : null;
+    if (el && !this.swingRaf) { this.lastSl = undefined; this.swingRaf = requestAnimationFrame(this.swingTick); }
+    if (el) {
+      const w = el.clientWidth, h = el.clientHeight;
+      /* the first scrub runs against the fallback rail box, so its scale and label
+         values describe a wall that no longer exists once the real one is measured.
+         Re-scrub after the measured layout lands, and again after the frame stagger
+         (480ms cap) plus one reveal (620ms) has finished moving things. */
+      if (w && h && (w !== this.state.railW || h !== this.state.railH)) {
+        this.setState({ railW: w, railH: h }, () => {
+          this.queueScrub();
+          [0, 80, 1120].forEach(d => setTimeout(() => this.scrub(), d));
+        });
+      }
+    }
+  }
+
+  onKey = (e) => {
+    if (e.key === "Escape") return this.goBack();
+    if (!this.state.zone) return;
+    if (e.key === "ArrowRight") this.step(this.state.zone, 1);
+    if (e.key === "ArrowLeft") this.step(this.state.zone, -1);
+  };
+
+  onWheel = (e) => {
+    if (this.state.open !== null) return;
+    cancelAnimationFrame(this.momRaf);
+    cancelAnimationFrame(this.glideRaf);
+    const el = e.currentTarget;
+    const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const want = el.scrollLeft + d;
+    el.scrollLeft = want;
+    const spill = want - el.scrollLeft;
+    if (Math.abs(spill) > 0.5) this.bandBy(el, spill);
+    this.queueScrub();
+  };
+
+  onDragStart = (e) => {
+    if (e.button !== 0 || this.state.open !== null) return;
+    cancelAnimationFrame(this.momRaf);
+    cancelAnimationFrame(this.glideRaf);
+    const el = e.currentTarget;
+    this.drag = { el, x: e.clientX, left: el.scrollLeft, moved: 0, px: e.clientX, t: performance.now(), v: 0 };
+    el.style.cursor = "grabbing";
+  };
+
+  onDragMove = (e) => {
+    if (!this.drag) return;
+    const dx = e.clientX - this.drag.x;
+    this.drag.moved = Math.max(this.drag.moved, Math.abs(dx));
+    const now = performance.now();
+    const dt = now - this.drag.t;
+    if (dt > 0) {
+      const v = -((e.clientX - this.drag.px) / dt) * 16.7;
+      this.drag.v = this.drag.v * 0.7 + v * 0.3;
+      this.drag.px = e.clientX;
+      this.drag.t = now;
+    }
+    const want = this.drag.left - dx;
+    this.drag.el.scrollLeft = want;
+    const spill = want - this.drag.el.scrollLeft;
+    if (Math.abs(spill) > 0.5) this.bandBy(this.drag.el, spill);
+    this.queueScrub();
+  };
+
+  onDragEnd = () => {
+    if (!this.drag) return;
+    const el = this.drag.el, v0 = this.drag.v;
+    el.style.cursor = "grab";
+    this.suppress = this.drag.moved > 6;
+    this.drag = null;
+    setTimeout(() => { this.suppress = false; }, 30);
+    this.coast(el, v0);
+  };
+
+  /* free coast — the wall keeps walking and stops wherever friction leaves it.
+     No snap: the centre print is a hero by position, not by magnetism. */
+  coast(el, v0) {
+    cancelAnimationFrame(this.momRaf);
+    let v = Math.max(-96, Math.min(96, v0 || 0));
+    if (Math.abs(v) < 1.4) return;
+    const tick = () => {
+      v *= 0.945;
+      const want = el.scrollLeft + v;
+      el.scrollLeft = want;
+      const spill = want - el.scrollLeft;
+      if (Math.abs(spill) > 0.5) { this.bandBy(el, spill); v *= 0.45; }
+      this.queueScrub();
+      if (Math.abs(v) > 0.15) this.momRaf = requestAnimationFrame(tick);
+    };
+    this.momRaf = requestAnimationFrame(tick);
+  }
+
+  enter(zone) {
+    if (this.suppress) return;
+    this.setState({ zone, open: null, railW: 0, railH: 0 }, () => this.queueScrub());
+  }
+
+  goIndex = () => this.setState({ zone: null, open: null });
+
+  goBack = () => {
+    if (this.state.open !== null) return this.closePiece();
+    if (this.state.zone) return this.goIndex();
+  };
+
+  closePiece = () => {
+    const cur = this.state.open, zone = this.state.zone;
+    if (cur === null) return;
+    /* the panel shrinks back onto its own hook before it leaves */
+    this.setState({ openPhase: 0 });
+    clearTimeout(this.closeT);
+    this.closeT = setTimeout(() => this.setState({ open: null }), D_HERO);
+  };
+
+  /* one tweened glide for every programmatic move — prev/next, open, close.
+     Deep ease-out on the contract's ground band, no snap, cancels momentum
+     and any glide already in flight. */
+  glideTo(el, target, dur) {
+    cancelAnimationFrame(this.momRaf);
+    cancelAnimationFrame(this.glideRaf);
+    const from = el.scrollLeft;
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
+    const to = Math.min(max, Math.max(0, target));
+    if (Math.abs(to - from) < 1) { el.scrollLeft = to; this.queueScrub(); return; }
+    const t0 = performance.now();
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - t0) / dur);
+      el.scrollLeft = from + (to - from) * (1 - Math.pow(1 - t, 2.6));
+      this.queueScrub();
+      if (t < 1) this.glideRaf = requestAnimationFrame(tick);
+    };
+    this.glideRaf = requestAnimationFrame(tick);
+  }
+
+  center(zone, i) {
+    const aim = (dur) => {
+      const el = this.refs2[zone].current;
+      if (!el) return;
+      const it = this.layout(zone).items[i];
+      if (!it) return;
+      const margin = Math.max(20, (el.clientWidth - it.w) / 2);
+      this.glideTo(el, it.left - margin, dur);
+    };
+    aim(D_GROUND);
+    /* the panel's own expand changes the track's geometry — re-aim once it has. */
+    setTimeout(() => aim(D_MICRO), 140);
+  }
+
+  openPiece(zone, i) {
+    if (this.suppress) return;
+    if (this.state.open === i) return this.closePiece();
+    /* freeze the wall where it stands: the panel centres itself on the viewport,
+       so the rail must not glide underneath it. */
+    const el = this.refs2[zone] && this.refs2[zone].current;
+    cancelAnimationFrame(this.momRaf);
+    cancelAnimationFrame(this.glideRaf);
+    this.setState({ open: i, openScroll: el ? el.scrollLeft : 0, openPhase: 0 }, () => {
+      requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ openPhase: 1 })));
+    });
+  }
+
+  step(zone, dir) {
+    const list = zone === "photo" ? PHOTOS : GEN;
+    if (this.state.open !== null) {
+      const n = (this.state.open + dir + list.length) % list.length;
+      return this.setState({ open: n });
+    }
+    const el = this.refs2[zone].current;
+    if (el) this.glideTo(el, el.scrollLeft + dir * Math.max(280, el.clientWidth * 0.6), D_GROUND);
+  }
+
+  railBox() {
+    const el = this.state.zone ? this.refs2[this.state.zone].current : null;
+    const h = this.state.railH || (el && el.clientHeight) || 0;
+    const w = this.state.railW || (el && el.clientWidth) || 0;
+    return { h: Math.max(240, h || 360), w: Math.max(380, w || 900) };
+  }
+
+  layout(zone) {
+    const list = (zone === "photo" ? PHOTOS : GEN)
+      .slice()
+      .sort((a, b) => String(a[2]).localeCompare(String(b[2])));
+    const { h: railH, w: railW } = this.railBox();
+    const openIdx = this.state.zone === zone ? this.state.open : null;
+    /* one rail, everything under it. The rod hangs high on the wall and every
+       print hangs from a hook over it, the way a piece actually hangs — nothing
+       rests on a line pushing up from below.
+       The hang is a block — hook crest, the deepest drop, the label band, the
+       print — and that block is centred in the room: the air above the crest
+       equals the air beneath the lowest print, so the wall reads hung rather
+       than pressed to one edge. */
+    const HOOK_CREST = 14, LAB_BAND = 39;
+    const cardHz = Math.max(56, Math.round(railH * 0.44));
+    const maxDropz = Math.round(railH * 0.11);
+    const blockH = HOOK_CREST + maxDropz + LAB_BAND + cardHz;
+    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2));
+    /* the rail head sits above the scroller, so the scroller's own middle is not
+       the window's middle — half the head's height corrects for it. */
+    const scEl = this.refs2[zone] && this.refs2[zone].current;
+    const headH = scEl ? scEl.offsetTop : 0;
+    let openFrom = null;
+    const panelH = Math.max(220, Math.min(railH - 16, 560));
+    const panelW = Math.max(320, Math.min(880, railW - 88));
+    /* the plate is 55% of the panel, but the statement column has a floor: below a
+       readable measure the plate gives width back rather than clipping the copy.
+       At the full 880 the plate gets its 55%; only a squeezed panel moves it. */
+    const plateW = Math.max(Math.round(panelW * 0.38), Math.min(Math.round(panelW * 0.55), panelW - 330));
+    const isPhoto = zone === "photo";
+    const items = [];
+    let x = 44;
+    list.forEach((row, i) => {
+      const isOpen = i === openIdx;
+      const id = row[0], title = row[1], year = row[2];
+      const metaRows = isPhoto
+        ? [{ label: "CAPTURE", value: row[3] }, { label: "PROCESS", value: row[4] }, { label: "PAPER", value: row[5] }]
+        : [{ label: "SYSTEM", value: row[3] }, { label: "OUTPUT", value: row[4] }];
+      const edition = isPhoto ? row[6] : row[5];
+      const body1 = isPhoto ? row[7] : row[6];
+      const body2 = isPhoto ? row[8] : row[7];
+      const body3 = isPhoto ? row[9] : row[8];
+      const nt = NOTES[title] || [];
+      const body4 = nt[0] || "";
+      const hangNote = nt[1] || "";
+      const makeRows = [
+        { label: MAKE[isPhoto ? "photo" : "gen"][0], value: MAKE[isPhoto ? "photo" : "gen"][1] },
+        { label: MAKE.ink[0], value: MAKE.ink[1] },
+        { label: MAKE.border[0], value: MAKE.border[1] },
+        { label: MAKE.sign[0], value: MAKE.sign[1] },
+        { label: MAKE.ship[0], value: MAKE.ship[1] }
+      ];
+      /* what fits a rail label is a measured question, not a wish. The plate is
+         cardW + 46 — 130px at the narrowest print — so the detail line carries year
+         and size, and the third stage a short medium. Paper stock and the full
+         edition string stay in the detail panel, where there is room for them. */
+      const pf = String(isPhoto ? row[5] : row[4]).split(" · ");
+      const capB = [year, pf[0]].filter(Boolean).join(" · ");
+      const capC = String(row[3]).split(/[,\u2014+(]/)[0].trim().slice(0, 10);
+
+      /* the frame holds only the print; the label is a plate on the wall beside it,
+         on the far side from the baseline so it can run wider than the frame. */
+      const LAB_H = 30, LAB_GAP = 9;
+      const above = false;
+      /* the drop cycle rides the room, not what is left of it — the print size is
+         fixed before any wire length is chosen, so every print measures the same
+         and the rhythm comes from the drops alone. */
+      const dropN = (STEMF[i % STEMF.length] - 0.13) / 0.15;
+      const drop = Math.round(railH * (0.03 + dropN * 0.08));
+      let cardH = cardHz;
+      let stem = drop + LAB_H + LAB_GAP;
+      let imgH = cardH - 16;
+      const cardW = Math.round(imgH / AR) + 18;
+      const top = baseline + stem;
+      /* the wall's geometry never changes when a print opens — the panel is a
+         room-level overlay, so the print's hook stays exactly where it was and
+         the close lands back on it. */
+      if (isOpen) openFrom = { x, top, w: cardW, h: cardH };
+      const stemX = x + 26;
+      const stemDelay = Math.min(ST_CAP, i * ST_FRAME);
+      /* hook and drop wire are ONE stroke, drawn as one path in one gauge: the
+         hardware is a single length of wire bent over the rod, not a hook plus a
+         line that happen to meet. It draws from the back tail, over the rod and
+         down to the print's top edge. */
+      const stemStyle = "display:none;";
+      const hookH = 14 + stem;
+      const hookStyle = isOpen ? "display:none;"
+        : `position:absolute;left:${stemX - 11}px;top:${baseline - 14}px;width:20px;height:${hookH}px;z-index:3;pointer-events:none;`;
+      const hookD = `M3 17 L3 11.5 C3 9 4 7 6.5 7 C9 7 11 9 11 13 L11 ${hookH}`;
+      const wireStyle = `fill:none;stroke:rgba(14,14,14,.34);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:700;animation:eb-wire-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
+      /* spatial depth: HF (the height factor already driving each card's rest
+         size) doubles as a near/far cue — taller cards read nearer (full scale,
+         full contrast, closer shadow), shorter ones sit farther (slightly smaller,
+         softer, hazier). Ambient wind-sway is a second, independent loop — its own
+         duration/phase per card so the wall never moves in unison. */
+      const depth = (HF[i % HF.length] - 0.60) / 0.28;
+      const restScale = 1;
+      const nearShadow = `${(1.6 + depth * 0.4).toFixed(2)}px 2px 5px rgba(14,14,14,.13),${Math.round(9 + depth * 4)}px ${Math.round(24 + depth * 8)}px ${Math.round(44 + depth * 12)}px rgba(14,14,14,.18)`;
+      const swayDur = (4.6 + (i % 5) * 0.62).toFixed(2);
+      const swayDelay = -((i % 7) * 0.78).toFixed(2);
+      /* the open/close move is a true expand: outer box geometry (left/top/width/
+         height) transitions from the resting card's rect to the panel's rect over
+         the 1040ms hero band, the same DOM node throughout — no keyframe swap, no
+         re-triggered entrance fade on close. */
+      /* dimming/blurring the rest of the wall while one piece is open happens
+         directly on the OTHER resting cards — never via a shared backdrop layer
+         over the open panel, so the panel itself can never end up blurred. */
+      const recede = !isOpen && openIdx !== null;
+      const lift = !isOpen && !recede && this.state.hoverIdx === zone + ":" + i;
+      const cardStyle = [
+        "position:absolute", `left:${x}px`, `top:${top}px`, `width:${cardW}px`, `height:${cardH}px`,
+        "",
+        isOpen ? "z-index:90" : lift ? "z-index:30" : "z-index:5",
+        "box-sizing:border-box", "cursor:pointer",
+        `transition:left ${D_HERO}ms ${EASE},top ${D_HERO}ms ${EASE},width ${D_HERO}ms ${EASE},height ${D_HERO}ms ${EASE},filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE}`,
+        `filter:blur(${recede ? 5 : 0}px)`, `opacity:${isOpen ? 0 : recede ? 0.45 : 1}`,
+        `pointer-events:${isOpen || recede ? "none" : "auto"}`,
+        /* a `both`-filled arrival animation outranks an inline opacity, so the
+           open card drops its animation rather than fighting it. The arrival is
+           opacity only: the hook, the wire and the label are pinned to this box's
+           authored `top`, so nothing may move it — a rise here would leave the
+           print hanging 28px below its own wire. */
+        isOpen || recede ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
+      ].join(";") + ";";
+      const hoverOuterStyle = isOpen ? "" : "z-index:30;";
+      const innerStyle = [
+        "width:100%", "height:100%", "box-sizing:border-box", "overflow:hidden",
+        "background:#FFFFFF", isOpen ? "border:1px solid rgba(14,14,14,.20)" : "border:0",
+        isOpen ? "padding:0" : "padding:9px 9px 7px",
+        isOpen ? "box-shadow:1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)" : "",
+        `transition:border-color ${D_HERO}ms ${EASE},box-shadow ${D_HERO}ms ${EASE},padding ${D_HERO}ms ${EASE},transform ${D_HERO}ms ${EASE}`,
+        /* hover = the piece steps off the wall: it lifts away from its hook,
+            comes forward, and takes the centre cast from the frame spec so the
+            air under it reads. Nothing else on the wall moves. */
+        isOpen ? "" : `transform:scale(${(restScale + (lift ? .045 : 0)).toFixed(3)})${lift ? " translateY(" + (above ? "-3px" : "3px") + ")" : ""};transform-origin:center ${above ? "bottom" : "top"};will-change:transform`,
+        isOpen ? "" : (lift ? `box-shadow:${nearShadow}` : "box-shadow:none"),
+        /* the warp rides the whole piece — white mount included — so the sheet
+           and its border curl together instead of the paper moving inside a
+           rigid card. */
+        isOpen ? "" : `filter:url(#eb-wind-s-${i % 4})`
+      ].filter(Boolean).join(";") + ";";
+      /* hover = the piece steps off the wall: it lifts a little, comes forward,
+         and takes the centre cast from the frame spec so the air under it reads.
+         Nothing else on the wall moves. */
+      const hoverInnerStyle = isOpen ? "" : `transform:scale(${(restScale + 0.045).toFixed(3)}) translateY(${above ? "-3px" : "3px"});transform-origin:center ${above ? "bottom" : "top"};box-shadow:${nearShadow};`;
+      /* two motions, one breeze: the frame swings from its hook (this wrapper),
+         and the paper inside it warps on an animated displacement mesh (the
+         plate's own filter). Both are infinite, phase-offset per print, and
+         neither is driven by scroll, hover or rail position. */
+      const swingStyle = `width:100%;height:100%;transform-origin:50% ${above ? "100%" : "0%"};`
+        + (isOpen ? "" : `animation:eb-swing ${swayDur}s ease-in-out ${swayDelay}s infinite;`);
+      /* a third motion, and the only one the walk drives: the wall moves, the paper
+         lags. Pivoted at the wire, not the frame's centre, so the piece really
+         hangs off its hook. The engine owns this transform; nothing else writes it.
+         Heavier prints take less of the angle. */
+      const tiltStyle = `width:100%;height:100%;transform-origin:${stemX - x}px 0px;will-change:transform;`;
+      const tiltF = (0.82 + (i % 5) * 0.09).toFixed(2);
+      const lineAnim = (d) => `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${d}ms both;`;
+      items.push({
+        title, year, metaRows, edition, body1, body2, body3, body4, hangNote, makeRows,
+        idx: String(i + 1).padStart(2, "0"),
+        isOpen, isClosed: !isOpen, openFlag: isOpen ? "1" : "0", left: x, w: cardW, top, h: cardH,
+        img: IMG(id, 420), imgBig: IMG(id, 1100),
+        cardStyle, innerStyle, stemStyle, hookStyle, hookD, hookH, wireStyle, capB, capC, stemDelay,
+        /* the label sits above its print, clear to the right of the drop wire —
+           the wire is in front of the wall, the label is painted on it, and the
+           two must not cross. */
+        labelStyle: isOpen ? "display:none;"
+          : `filter:blur(${recede ? 4 : 0}px);opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
+        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
+        plateStyle: `width:calc(100% - 5px);height:calc(100% - 5px);margin:2.5px;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;filter:url(#eb-wind-sm-${i % 4}) brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
+        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF,
+        onEnterCard: isOpen ? undefined : () => this.setState({ hoverIdx: zone + ":" + i }),
+        onLeaveCard: isOpen ? undefined : () => this.setState({ hoverIdx: null }),
+        openPlateStyle: `width:${plateW}px;flex:none;height:100%;box-sizing:border-box;padding:18px;border-right:1px solid rgba(14,14,14,.12);background:#FFFFFF;display:flex;flex-direction:column;gap:13px;animation:eb-plate-in ${D_HERO}ms ${EASE} 80ms both;`,
+        openImgStyle: `flex:1;min-height:0;background:#FFFFFF url("${IMG(id, 1200)}") no-repeat center/contain;`,
+        lineStyle1: "display:flex;justify-content:space-between;align-items:baseline;gap:14px;" + lineAnim(ST_LINE),
+        titleStyle: "margin:0;font:600 clamp(21px,2vw,28px)/1.05 Archivo,sans-serif;letter-spacing:-.032em;" + lineAnim(ST_LINE * 2),
+        metaBoxStyle: "flex:none;display:flex;flex-direction:column;gap:4px;padding-top:11px;border-top:1px solid rgba(14,14,14,.16);" + lineAnim(ST_LINE * 3),
+        bodyStyle: "flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:6px;" + lineAnim(ST_LINE * 4),
+        onClick: isOpen ? undefined : () => this.openPiece(zone, i)
+      });
+      x += cardW + GAP;
+    });
+    const trackWidth = x + 44;
+    const baseOver = Math.round(Math.min(400, Math.max(0, (trackWidth - railW) * 0.30)));
+    const marks = [];
+    const seen = new Set();
+    items.forEach(it => {
+      if (!seen.has(it.year)) {
+        seen.add(it.year);
+        marks.push({
+          label: it.year,
+          anchor: String(Math.round(it.left + it.w / 2)),
+          /* the year arrives with the first print of that year — same delay, so
+             the pair lands together. Opacity only: the scrub engine owns the
+             numeral's transform. */
+          style: `position:absolute;left:${it.left - 18}px;top:${baseline - 52}px;font:400 52px/1 Archivo,sans-serif;letter-spacing:-.04em;color:rgba(14,14,14,.07);pointer-events:none;user-select:none;will-change:transform;animation:eb-soft-in ${D_REVEAL}ms ${EASE} ${it.stemDelay}ms both;`
+        });
+      }
+    });
+    return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom };
+  }
+
+  zoneModel(zone, meta) {
+    const active = this.state.zone === zone;
+    const other = this.state.zone && !active;
+    const isIndex = !this.state.zone;
+    const isPhoto = zone === "photo";
+    const list = isPhoto ? PHOTOS : GEN;
+
+    let left, width;
+    if (isIndex) { left = isPhoto ? "0%" : "50%"; width = "50%"; }
+    else if (active) { left = isPhoto ? "0px" : SPINE + "px"; width = `calc(100% - ${SPINE}px)`; }
+    else { left = isPhoto ? "0px" : `calc(100% - ${SPINE}px)`; width = SPINE + "px"; }
+
+    const accent = isPhoto ? "#9C6B44" : "#4F6357";
+    const anyOpen = this.state.open !== null;
+    /* both panes are transparent now — the plaster wall lives on the root layer
+       so the tooth and the light are continuous across the whole room. */
+    const paneStyle = [
+      "position:absolute", "top:0", "bottom:0", `left:${left}`, `width:${width}`,
+      "background:transparent",
+      (isPhoto && !isIndex) ? "border-right:1px solid rgba(14,14,14,.08)" : "",
+      isIndex ? "overflow:visible" : "overflow:hidden", "z-index:" + (active ? 10 : 8),
+      `transition:left ${D_GROUND}ms ${EASE},width ${D_GROUND}ms ${EASE}`
+    ].filter(Boolean).join(";") + ";";
+
+    const eyebrowStyle = `font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;color:${accent};text-transform:uppercase;white-space:nowrap;`;
+    const navBtnStyle = `cursor:pointer;width:38px;height:38px;border-radius:2px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(14,14,14,.10);background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);font:400 15px/1 'JetBrains Mono',monospace;color:#232320;transition:background ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE},transform ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`;
+
+    const laid = active ? this.layout(zone) : null;
+    /* the glass in the spine needs something true behind it: the hang of the room
+       the user is actually in. */
+    const mirror = (!active && this.state.zone) ? this.layout(this.state.zone) : null;
+    const openIdx = active ? this.state.open : null;
+
+    /* index cluster — three prints hung as one stack. Resting, the two behind
+       only peek; on hover the stack fans and the front print takes the centre
+       cast from the frame spec. Nothing moves faster than the reveal band. */
+    const hot = this.state.hover === zone;
+    const vh = this.state.roomH || (typeof window !== "undefined" ? window.innerHeight : 900);
+    const vw = this.state.roomW || (typeof window !== "undefined" ? window.innerWidth : 1440);
+    const fs = Math.min(25, Math.max(13, Math.min(vw * .016, vh * .026)));
+    const linesBot = this.state.bandH || 108;
+    const topGap = Math.round(Math.min(56, Math.max(26, vh * .06)));
+    const footBand = Math.round(Math.min(34, Math.max(22, vh * .05)));
+    const botPad = Math.round(Math.min(68, Math.max(30, vh * .055))) + footBand;
+    const pillH = 0;
+    const capH = this.state.capH || Math.round(Math.min(104, Math.max(46, vh * .11)));
+    const gap = Math.round(Math.min(18, Math.max(8, vh * .02)));
+    /* the group must fit the room it is given. Rather than let a floored print
+       push the pile up through the headline, the parts yield in a stated order:
+       the gaps close, the overhang tightens, and the caption's type steps down.
+       Only when all three are spent does the print sit on its 96px floor. */
+    const PW_FLOOR = 96, PLATE_PAD = 18;
+    const avail = vh - linesBot - topGap - botPad;
+    const fit = (b, g, c) => Math.max(PW_FLOOR, Math.min((avail - pillH - c - g * 2 - b - 16) / 1.414, vw * .22, 380));
+    const need = (b, g, c) => PW_FLOOR * 1.414 + 16 + b + pillH + g * 2 + c;
+
+    let gapN = gap, capScale = 1;
+    let bleedN = Math.round(22 + .14 * (fit(48, gapN, capH) + PLATE_PAD));
+    if (need(bleedN, gapN, capH) > avail) { gapN = Math.max(6, Math.round(gap * .5)); }
+    if (need(bleedN, gapN, capH) > avail) { bleedN = Math.round(bleedN * .55); }
+    if (need(bleedN, gapN, capH) > avail) {
+      const left = avail - (PW_FLOOR * 1.414 + 16 + bleedN + pillH + gapN * 2);
+      capScale = Math.max(.62, Math.min(1, left / Math.max(1, capH)));
+    }
+    const bleed = bleedN;
+    const pwNum = fit(bleedN, gapN, capH * capScale);
+    const PW = pwNum.toFixed(1) + "px";
+    const capMax = Math.round(Math.max(96, Math.min(vw / 2 - 56, Math.max(pwNum * 2.2, 288))));
+    const titlePx = Math.max(14, Math.min(vw * .026, vh * .04, 40) * capScale).toFixed(1);
+    const metaPx = Math.max(9, Math.min(vw * .0082, vh * .013, 12.5) * capScale).toFixed(1);
+    /* two blank sheets sit behind the three prints: only their edges show, so
+       the stack reads as a deeper pile than the three works on display. */
+    /* the pile is a real depth: each plate sits on its own Z plane and turns
+       slightly to the light, so the ones behind read as further into the wall
+       rather than merely smaller. Front plate stays square to the viewer. */
+    const DEPTH = [-96, -78, -46, -34, 0];
+    const YAW   = [-7.2, 6.4, -3.8, 3.2, 0];
+    const off = (p, min) => `max(${min}px, calc(${PW} * ${p}))`;
+    const REST = [
+      `translate3d(calc(-1 * ${off(.155, 38)}),19px,${DEPTH[0]}px) rotateY(${YAW[0]}deg) rotate(-7.4deg)`,
+      `translate3d(${off(.145, 35)},21px,${DEPTH[1]}px) rotateY(${YAW[1]}deg) rotate(6.4deg)`,
+      `translate3d(calc(-1 * ${off(.085, 21)}),9px,${DEPTH[2]}px) rotateY(${YAW[2]}deg) rotate(-4.4deg)`,
+      `translate3d(${off(.078, 19)},11px,${DEPTH[3]}px) rotateY(${YAW[3]}deg) rotate(3.5deg)`,
+      "translate3d(0,0,0) rotateY(0deg) rotate(0deg)"
+    ];
+    const FAN = [
+      `translate3d(calc(-1 * ${off(.52, 96)}),12px,-64px) rotateY(-11deg) rotate(-13.2deg)`,
+      `translate3d(${off(.50, 92)},16px,-52px) rotateY(9.6deg) rotate(12.2deg)`,
+      `translate3d(calc(-1 * ${off(.42, 62)}),-4px,-24px) rotateY(-5.4deg) rotate(-8.6deg)`,
+      `translate3d(${off(.41, 58)},0,-16px) rotateY(4.6deg) rotate(7.4deg)`,
+      "translate3d(0,-12px,34px) rotateY(0deg) rotate(0deg)"
+    ];
+
+    /* one light, so one shadow law: a plate deeper into the wall throws a
+       shorter, softer, weaker cast, and the wall's fall-off dims its paper.
+       t = 0 at the back of the pile, 1 at the front print. */
+    const cast = t => {
+      const near = `${(1 + .6 * t).toFixed(2)}px ${(1 + 1 * t).toFixed(2)}px ${(2 + 3 * t).toFixed(1)}px rgba(14,14,14,${(.075 + .055 * t).toFixed(3)})`;
+      const far = `${(4 + 7 * t).toFixed(1)}px ${(10 + 20 * t).toFixed(1)}px ${(22 + 34 * t).toFixed(1)}px rgba(14,14,14,${(.095 + .105 * t).toFixed(3)})`;
+      return near + "," + far;
+    };
+    const CAST_HOT = "2.2px 3px 7px rgba(14,14,14,.15),14px 38px 68px rgba(14,14,14,.22)";
+    /* one depth-of-field law: d is distance behind the front plate, 0 at the
+       print in focus and 1 at the back of the pile. Defocus grows faster than
+       distance, as a real lens does, so the step from 4th to 5th reads. */
+    const dof = k => {
+      const d = (4 - k) / 4;
+      const f = Math.pow(d, 1.35);
+      return {
+        blur: (2.9 * f).toFixed(2),
+        opacity: (1 - .60 * f).toFixed(3),
+        sat: (1 - .46 * f).toFixed(3)
+      };
+    };
+    const peek = [0, 1, 2, 3, 4].map(k => {
+      const edge = k < 2;
+      const front = k === 4;
+      /* the plates behind are real works, not blanks — held back by opacity and
+         the wall's fall-off so they read as depth, not as competition. */
+      const src = IMG(list[[1, 6, 4, 8, 0][k] % list.length][0], edge ? 380 : 520);
+      return {
+        frameStyle: [
+          "position:absolute", "left:0", "top:0", `width:calc(${PW} + 18px)`, "box-sizing:border-box",
+          "background:#FFF", "border:1px solid rgba(14,14,14,.13)", edge ? "padding:4px 4px 3px" : "padding:9px 9px 7px",
+          `box-shadow:${front && hot ? CAST_HOT : cast(k / 4)}`,
+          `transform:${hot ? FAN[k] : REST[k]}`, "transform-origin:50% 100%",
+          "z-index:" + k, "backface-visibility:hidden",
+          `filter:url(#eb-wind-g-${k % 4}) brightness(${(.94 + .06 * (k / 4)).toFixed(3)}) contrast(${(.955 + .045 * (k / 4)).toFixed(3)})`,
+          `transition:transform 500ms ${EASE},box-shadow ${D_MICRO}ms ${EASE},filter ${D_MICRO}ms ${EASE}`,
+          `animation:eb-swing-r ${(5.1 + k * 0.6).toFixed(2)}s ease-in-out ${(-k * 0.9).toFixed(2)}s infinite`
+        ].join(";") + ";",
+        imgStyle: `width:100%;aspect-ratio:1/1.414;background:#FFF url("${src}") no-repeat center/cover;opacity:${dof(k).opacity};filter:url(#eb-wind-m-${k % 4}) blur(${dof(k).blur}px) saturate(${dof(k).sat});transition:opacity ${D_MICRO}ms ${EASE};`
+      };
+    });
+
+    const ticks = (laid ? laid.items : []).map((it, i) => {
+      const on = openIdx === i;
+      return {
+        label: it.idx,
+        style: `cursor:pointer;flex:1;min-width:0;text-align:center;padding:6px 0 5px;font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:${on ? "#FFF" : "#6A6862"};background:${on ? "#0E0E0E" : "transparent"};transition:background ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`,
+        onClick: () => this.openPiece(zone, i)
+      };
+    });
+
+    return {
+      paneStyle, eyebrowStyle, navBtnStyle, peek, ticks,
+      railHeadStyle: `flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:blur(${anyOpen ? 6 : 0}px);opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
+      peekRowStyle: "flex:1;min-height:0;display:flex;gap:18px;align-items:flex-start;margin:0 -70px 22px 0;pointer-events:none;overflow:hidden;",
+      introTextStyle: "flex:none;display:flex;flex-direction:column;gap:12px;max-width:420px;",
+      isIntro: isIndex, isSpine: other, isActive: active,
+      clusterWrapStyle: `position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:${isPhoto ? "flex-end" : "flex-start"};justify-content:center;padding:${linesBot + topGap}px ${isPhoto ? IN_PAD : OUT_PAD} ${botPad}px ${isPhoto ? OUT_PAD : IN_PAD};box-sizing:border-box;`,
+      clusterGroupStyle: `pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:${gapN}px;width:fit-content;max-width:100%;`,
+      stackStyle: `position:relative;flex:none;width:calc(${PW} + 18px);height:calc(${PW} * 1.414 + 16px);margin-bottom:${bleed}px;perspective:${Math.round(pwNum * 5.2)}px;perspective-origin:50% 42%;transform-style:preserve-3d;`
+        + (isIndex ? (this.state.arrive ? `animation:eb-pile-in ${D_HERO}ms ${EASE} ${isPhoto ? 0 : 110}ms both;` : "opacity:0;") : ""),
+      pillStyle: `display:flex;align-items:center;justify-content:space-between;gap:16px;width:calc(${PW} + 18px);box-sizing:border-box;padding:min(10px,1.2vh) min(16px,1.4vw);border:1px solid rgba(14,14,14,${hot ? ".30" : ".16"});background:${hot ? "#FFFFFF" : "transparent"};box-shadow:${hot ? "0 1px 2px rgba(14,14,14,.06),0 6px 16px rgba(14,14,14,.10)" : "none"};transform:translateY(${hot ? "-1px" : "0"});font:500 clamp(9.5px,min(.8vw,1.3vh),13px)/1 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:${hot ? "#0E0E0E" : "#3A3A36"};transition:background ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE},transform ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`,
+      pillIdx: isPhoto ? "01" : "02",
+      pillLabel: isPhoto ? "Photography" : "Geometric",
+      capRef: this.capRefs[zone],
+      clusterCapStyle: (isIndex ? (this.state.arrive ? `animation:eb-soft-in ${D_REVEAL}ms ${EASE} ${isPhoto ? 430 : 540}ms both;` : "opacity:0;") : "") + `flex:none;display:flex;flex-direction:column;justify-content:space-between;align-items:center;min-height:${capH}px;gap:${Math.max(4, Math.round(6 * capScale))}px;text-align:center;width:${capMax}px;max-width:${capMax}px;`,
+      clusterTitleStyle: `margin:0;font:600 ${titlePx}px/1.05 Archivo,sans-serif;letter-spacing:-.035em;color:#0E0E0E;`,
+      clusterMetaStyle: `font:400 ${metaPx}px/1.4 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#4A4A46;`,
+      clusterMeta: meta.clusterMeta,
+      onHover: () => this.setState({ hover: zone }),
+      offHover: () => this.setState({ hover: null }),
+      eyebrow: meta.eyebrow, line1: meta.line1, line2: meta.line2, blurb: meta.blurb,
+      metaA: meta.metaA, metaB: meta.metaB,
+      total: String(list.length).padStart(2, "0"),
+      spineArrow: isPhoto ? "←" : "→",
+      spineShortLabel: isPhoto ? "Photography" : "Geometric",
+      spineWrapStyle: `filter:blur(${anyOpen ? 5 : 0}px);opacity:${anyOpen ? 0.4 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;inset:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-${isPhoto ? "right" : "left"}:1px solid rgba(14,14,14,.08);background:rgba(245,248,239,.20);backdrop-filter:blur(16px) saturate(1.05);-webkit-backdrop-filter:blur(16px) saturate(1.05);transition:opacity ${D_MICRO}ms ${EASE},backdrop-filter ${D_MICRO}ms ${EASE};`,
+      /* under the glass: the room the user is in, continuing past its own edge.
+         The track is the live hang at the live rail position — the scrub engine
+         drives its offset — so the spine blurs what is on screen now. */
+      spineMirror: mirror ? mirror.items.map(it => ({
+        style: `position:absolute;left:${it.left}px;top:${mirror.headH + it.top}px;width:${it.w}px;height:${it.h}px;box-sizing:border-box;background:#FFFFFF;padding:9px 9px 7px;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13);`,
+        imgStyle: `width:100%;height:100%;background:#FFFFFF url("${it.img}") no-repeat center/contain;`
+      })) : [],
+      spineMirrorOff: String(mirror ? (isPhoto ? SPINE : -(vw - SPINE)) : 0),
+      spineMirrorTrackStyle: mirror
+        ? `position:absolute;top:0;left:0;width:${mirror.trackWidth}px;height:100%;will-change:transform;transform:translateX(${isPhoto ? SPINE : -(vw - SPINE)}px);`
+        : "display:none;",
+      spineGhostWrapStyle: "position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:.58;",
+      spineLineStyle: "width:1px;height:56px;background:rgba(14,14,14,.22);",
+      /* the arrow is the one solid thing in the spine — a small pressed plate on
+         the frosted glass, so the eye lands on the way out of the room. */
+      spineArrowStyle: `flex:none;width:34px;height:34px;border-radius:2px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.22);backdrop-filter:blur(9px) saturate(1.06);-webkit-backdrop-filter:blur(9px) saturate(1.06);border:1px solid rgba(14,14,14,.18);box-shadow:0 1px 2px rgba(14,14,14,.05),0 6px 16px rgba(14,14,14,.08);font:500 13px/1 'JetBrains Mono',monospace;color:${accent};transition:background ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE};`,
+      spineLabelStyle: `writing-mode:vertical-rl;transform:rotate(180deg);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:${accent};white-space:nowrap;`,
+      ctaLabel: `Enter — ${list.length} prints`,
+      ctaStyle: `align-self:flex-start;margin-top:4px;padding:11px 20px;background:#0E0E0E;color:#FFF;font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;box-shadow:1px 1px 2px rgba(14,14,14,.14),3px 10px 24px rgba(14,14,14,.20);transition:transform ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE};`,
+      priceStyle: `font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#FFF;background:${accent};padding:6px 10px;white-space:nowrap;`,
+      trackStyle: laid ? `position:relative;height:100%;width:${laid.trackWidth}px;` : "position:relative;height:100%;width:100%;",
+      baseOver: laid ? String(laid.baseOver) : "0",
+      baselineStyle: laid ? `position:absolute;left:${-laid.baseOver}px;width:${laid.trackWidth}px;top:${laid.baseline - 1}px;height:2px;background:linear-gradient(to bottom,rgba(14,14,14,.11),rgba(14,14,14,.30));box-shadow:0 1.5px 2.5px rgba(14,14,14,.09);will-change:transform;` : "display:none;",
+      items: laid ? laid.items : [],
+      hasOpen: !!(laid && openIdx !== null && laid.items[openIdx]),
+      open: (laid && openIdx !== null && laid.items[openIdx]) || {},
+      /* the panel is a room-level overlay, so it can sit in the true middle of the
+         room on both axes — the scroller's own box stops below the header band and
+         excludes the spine, hence the headH and half-spine corrections. Phase 0 is
+         the print's resting rect (in room coordinates), phase 1 is the centre; the
+         tween between them is the expand. */
+      openPanelStyle: (() => {
+        if (!laid || openIdx === null || !laid.openFrom) return "display:none;";
+        const { h: railH, w: railW } = this.railBox();
+        const f = laid.openFrom, pw = laid.panelW, ph = laid.panelH;
+        const sc = this.state.openScroll || 0;
+        const shift = isPhoto ? SPINE / 2 : -SPINE / 2;
+        const open = this.state.openPhase === 1;
+        const L = open ? Math.round((railW - pw) / 2 + shift) : Math.round(f.x - sc);
+        const T = open ? Math.round((laid.headH + railH - ph) / 2) : Math.round(laid.headH + f.top);
+        return [
+          "position:absolute", `left:${L}px`, `top:${T}px`,
+          `width:${open ? pw : f.w}px`, `height:${open ? ph : f.h}px`,
+          "z-index:90", "box-sizing:border-box", "overflow:hidden", "background:#FFFFFF",
+          `border:1px solid rgba(14,14,14,${open ? ".20" : ".13"})`,
+          `box-shadow:${open ? "1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)" : "none"}`,
+          `opacity:${open ? 1 : 0.9}`,
+          `transition:left ${D_HERO}ms ${EASE},top ${D_HERO}ms ${EASE},width ${D_HERO}ms ${EASE},height ${D_HERO}ms ${EASE},box-shadow ${D_HERO}ms ${EASE},opacity ${D_MICRO}ms ${EASE}`
+        ].join(";") + ";";
+      })(),
+      marks: laid ? laid.marks : [],
+      counter: openIdx !== null ? `${String(openIdx + 1).padStart(2, "0")} / ${list.length}` : `${list.length} PRINTS`,
+      scrollerRef: this.refs2[zone],
+      onEnter: () => this.stepTo(zone),
+      onPrev: () => this.step(zone, -1),
+      onNext: () => this.step(zone, 1)
+    };
+  }
+
+  /* the nav states the whole site in one row: the index and the two rooms,
+     current one filled with ink. It replaces the crumb — a label that only
+     reported where you were, and offered no way out. */
+  /* moving between rooms runs the same wipe, bar only: the percentage belongs
+     to arriving at the site, not to walking through it. */
+  stepTo(zone) {
+    if (this.stepT) return;
+    const t0 = performance.now();
+    this.setState({ wipe: true, step: 0 });
+    this.stepT = setInterval(() => {
+      const t = Math.min(1, (performance.now() - t0) / 520);
+      this.setState({ step: Math.round((1 - Math.pow(1 - t, 2.1)) * 100) });
+      if (t >= 1) {
+        clearInterval(this.stepT); this.stepT = null;
+        this.enter(zone);
+        setTimeout(() => this.setState({ wipe: false, step: 0 }), 620);
+      }
+    }, 40);
+  }
+
+  navModel() {
+    const at = this.state.zone;
+    const item = (key, label) => {
+      const on = key === null ? !at : at === key;
+      return {
+        label,
+        onClick: () => (key === null ? this.setState({ zone: null, open: null }) : this.setState({ zone: key, open: null })),
+        style: [
+          "cursor:pointer", "white-space:nowrap", "width:fit-content",
+          `font:${on ? 600 : 500} 10px/1 'JetBrains Mono',monospace`, "letter-spacing:.2em", "text-transform:uppercase",
+          on ? "color:#0E0E0E" : "color:#6A6862",
+          on ? "border-bottom:1px solid rgba(14,14,14,.45)" : "border-bottom:1px solid transparent",
+          "padding-bottom:3px",
+          `transition:color ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE}`
+        ].join(";") + ";",
+        hover: on
+      };
+    };
+    return [item(null, "Both Walls"), item("photo", "Photography"), item("gen", "Geometric")];
+  }
+
+  renderVals() {
+    const zones = [
+      this.zoneModel("photo", {
+        eyebrow: "01 — The Tangible", line1: "Photographs,", line2: "Pushed Past Real", spine: "01 — Photographs, Pushed Past Real",
+        metaA: "CAPTURE", metaB: "PROCESS", clusterMeta: "11 prints · 2023—2026 · A3 archival matte",
+        blurb: "Ordinary places caught on a phone, then pushed in Photoshop until the colour carries the feeling the moment actually had."
+      }),
+      this.zoneModel("gen", {
+        eyebrow: "02 — The Analytical", line1: "Geometry", line2: "Written in Code", spine: "02 — Geometry Written in Code",
+        metaA: "SYSTEM", metaB: "OUTPUT", clusterMeta: "16 prints · 2023—2026 · A3 & A2 giclée",
+        blurb: "Compositions written entirely in code — interference, halftone and iteration, printed at the size they were designed for."
+      })
+    ];
+    const fsB = "clamp(13px,min(1.6vw,2.6vh),25px)";
+    const mono = () => `font:400 clamp(9.5px,calc(${fsB} * .6),13px)/1.3 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#4A4A46;white-space:nowrap;`;
+    const footEyebrowStyle = mono();
+    /* the headline moved into the nav band, its own column — quiet mono
+       chrome either side, so it still reads as the one display-weight thing
+       in the row. */
+    const navHeadlineStyle = "font:600 clamp(13px,1.35vw,18px)/1.3 Archivo,sans-serif;letter-spacing:-.01em;color:#0E0E0E;max-width:300px;text-wrap:pretty;";
+    const z = this.state.zone;
+    const sorted = z ? this.layout(z).items : [];
+    const crumb = !z ? "Index" : this.state.open !== null
+      ? `${z === "photo" ? "01" : "02"} — ${sorted[this.state.open].title}`
+      : (z === "photo" ? "01 — Photography" : "02 — Geometric");
+    /* with the ground gone, the category's colour lives only here — Law 04's
+       one tiny identity mark per hang, 5px of it. */
+    const markStyle = `flex:none;width:5px;height:5px;border-radius:50%;background:${(z || this.state.hover) === "photo" ? "#9C6B44" : (z || this.state.hover) === "gen" ? "#4F6357" : "#0E0E0E"};transition:background ${D_MICRO}ms ${EASE};`;
+
+    /* PORTRAIT — a different hang, not a squeezed one. Under 760px the wall
+       cannot be walked: there is no lateral room, no hover, and a 76px spine on
+       a 390px screen is not a wall but a waste. So the room keeps its plaster
+       and its light, and the hang becomes a vertical walk down the years —
+       Law 08 intact (time is still the default walk), Law 01 deliberately bent:
+       the room scrolls, because portrait leaves nothing else to give.
+       Struck in portrait: the spine and its live mirror, the two side-by-side
+       piles, drag-scrub and the wheel, the 880x560 plate, every backdrop blur,
+       every displacement mesh, the animated grain, and all hover states. */
+    const mob = (this.state.roomW || (typeof window !== "undefined" ? window.innerWidth : 1440)) < 760;
+    const self = this;
+    const mobAccent = z === "photo" ? "#9C6B44" : "#4F6357";
+    const mobNav = this.navModel().map(function (n) {
+      return { label: n.label, onClick: n.onClick,
+        style: n.style + "min-height:44px;display:flex;align-items:center;padding:0 0 3px;" };
+    });
+    let seenYear = null;
+    const mobItems = (mob && z ? sorted : []).map(function (it, i) {
+      const fresh = it.year !== seenYear; seenYear = it.year;
+      return {
+        idx: it.idx, title: it.title, year: it.year, capB: it.capB, capC: it.capC,
+        showYear: fresh,
+        /* one cheap transform loop survives: the swing. The warp meshes do not —
+           eight animated displacement filters is a phone-melting bill for an
+           effect nobody can see at 335px. */
+        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:9px 9px 7px;cursor:pointer;"
+          + "box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13);"
+          + "transform-origin:50% 0%;animation:eb-swing-r " + (5.2 + (i % 5) * 0.6).toFixed(2)
+          + "s ease-in-out " + (-(i % 7) * 0.8).toFixed(2) + "s infinite;",
+        imgStyle: 'width:100%;aspect-ratio:1/1.414;background:#FFFFFF url("' + it.img + '") no-repeat center/contain;',
+        onClick: function () { self.openPiece(z, i); }
+      };
+    });
+    const mobOpenIt = (mob && z && this.state.open !== null) ? sorted[this.state.open] : null;
+    const mobWalls = !mob ? [] : [
+      { key: "photo", n: "01", line: "Photographs, Pushed Past Real", accent: "#9C6B44",
+        meta: "11 prints · 2023—2026 · A3 archival matte", img: IMG(PHOTOS[0][0], 760) },
+      { key: "gen", n: "02", line: "Geometry Written in Code", accent: "#4F6357",
+        meta: "16 prints · 2023—2026 · A3 & A2 giclée", img: IMG(GEN[0][0], 760) }
+    ].map(function (w) {
+      return {
+        n: w.n, line: w.line, meta: w.meta, cta: "Enter the wall →",
+        wrapStyle: "display:flex;flex-direction:column;gap:15px;cursor:pointer;",
+        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:11px 11px 9px;"
+          + "box-shadow:1px 1px 2px rgba(14,14,14,.10),7px 20px 40px rgba(14,14,14,.15);",
+        imgStyle: 'width:100%;aspect-ratio:1/1.414;background:#FFFFFF url("' + w.img + '") no-repeat center/contain;',
+        numStyle: "font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:" + w.accent + ";",
+        ctaStyle: "align-self:flex-start;margin-top:6px;min-height:44px;display:flex;align-items:center;padding:0 18px;"
+          + "background:#0E0E0E;color:#FFF;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;",
+        onClick: function () { self.stepTo(w.key); }
+      };
+    });
+    const mobVals = {
+      isMob: mob, isDesk: !mob,
+      roomStyle: "position:fixed;inset:0;background:#F5F8EF;background-image:radial-gradient(126% 104% at 16% -8%,rgba(255,255,255,.62),rgba(255,255,255,0) 58%),linear-gradient(118deg,rgba(14,14,14,0) 38%,rgba(14,14,14,.055) 100%);"
+        + (mob ? "overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;" : "overflow:hidden;"),
+      mobNav: mobNav, mobWalls: mobWalls, mobItems: mobItems,
+      mobTitle: z === "photo" ? "Photographs, Pushed Past Real" : "Geometry Written in Code",
+      mobMeta: z === "photo" ? "11 prints · 2023—2026 · A3 archival matte" : "16 prints · 2023—2026 · A3 & A2 giclée",
+      mobYearStyle: "align-self:flex-start;margin-top:8px;font:400 34px/1 Archivo,sans-serif;letter-spacing:-.04em;color:rgba(14,14,14,.16);",
+      mobAccentStyle: "font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:" + mobAccent + ";",
+      hasMobOpen: !!mobOpenIt,
+      mobTotal: z ? String(sorted.length).padStart(2, "0") : "00",
+      mobOpen: mobOpenIt ? {
+        idx: mobOpenIt.idx, title: mobOpenIt.title, year: mobOpenIt.year,
+        metaRows: mobOpenIt.metaRows, makeRows: mobOpenIt.makeRows, edition: mobOpenIt.edition,
+        body1: mobOpenIt.body1, body2: mobOpenIt.body2, body3: mobOpenIt.body3, body4: mobOpenIt.body4,
+        hangNote: mobOpenIt.hangNote,
+        sheetImgStyle: 'width:100%;box-sizing:border-box;aspect-ratio:1/1.414;background:#FFFFFF url("'
+          + mobOpenIt.imgBig + '") no-repeat center/contain;padding:10px;'
+          + "box-shadow:1px 1px 2px rgba(14,14,14,.10),6px 18px 36px rgba(14,14,14,.14);"
+      } : {},
+      mobEditionStyle: "font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#FFF;background:" + mobAccent + ";padding:7px 11px;white-space:nowrap;",
+      mobStepStyle: "min-height:44px;min-width:76px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#3A3A36;border:1px solid rgba(14,14,14,.14);border-radius:2px;background:#FFFFFF;",
+      mobPrev: function () { if (z) self.step(z, -1); },
+      mobNext: function () { if (z) self.step(z, 1); }
+    };
+    return {
+      ...mobVals,
+      zones, crumb, markStyle, footEyebrowStyle, navHeadlineStyle, roomRef: this.roomRef, time: this.state.time,
+      footRowStyle: `position:absolute;left:0;right:0;bottom:18px;z-index:70;display:flex;justify-content:center;align-items:center;gap:14px;`
+        + (this.state.arrive ? `animation:eb-soft-in ${D_REVEAL}ms ${EASE} 560ms both;` : "opacity:0;"),
+      bandOuterStyle: (() => { const o = this.state.open !== null; return (this.state.arrive ? `animation:eb-soft-in ${D_REVEAL}ms ${EASE} 120ms backwards;` : "opacity:0;") + `position:absolute;top:0;left:0;right:0;z-index:80;display:grid;grid-template-columns:auto 1fr minmax(0,300px) auto;align-items:start;gap:32px;padding:clamp(15px,3vh,26px) 26px 0;pointer-events:none;filter:blur(${o ? 6 : 0}px);opacity:${o ? 0.5 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};`; })(),
+      nav: this.navModel(),
+      navWrapStyle: `pointer-events:${this.state.open !== null ? "none" : "auto"};display:flex;flex-direction:column;gap:11px;`,
+      bandRef: this.bandRef,
+      bandHeadlineStyle: `display:${this.state.zone ? "none" : "flex"};align-items:flex-start;padding-top:1px;`,
+      bandCentreStyle: `display:${this.state.zone ? "none" : "flex"};flex-direction:column;gap:13px;`,
+      bandRightStyle: `display:${this.state.zone ? "none" : "flex"};flex-direction:column;align-items:flex-end;gap:9px;text-align:right;`,
+      preOn: !this.state.preGone || this.state.wipe,
+      preFull: !this.state.preGone,
+      preNum: `${String(this.state.pre).padStart(3, " ")}%`,
+      preNumStyle: "font:500 19px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:#0E0E0E;font-variant-numeric:tabular-nums;white-space:pre;",
+      preCount: `[ ${this.state.pre}% ]`,
+      preFootStyle: `display:${this.state.preGone ? "none" : "block"};`,
+      preWrapStyle: `position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#F5F8EF;${(this.state.preGone ? this.state.step : this.state.pre) >= 100 ? `animation:eb-pre-out 560ms ${EASE} 60ms both;` : ""}`,
+      preBarStyle: `position:absolute;left:0;top:0;bottom:0;width:${this.state.preGone ? this.state.step : this.state.pre}%;background:#0E0E0E;`,
+      grainRef: this.grainRef,
+      isIndex: !z,
+      showBack: !!z,
+      backLabel: this.state.open !== null ? "✕ Close" : "↖ Index",
+      goBack: this.goBack,
+      goIndex: this.goIndex,
+      closePiece: this.closePiece,
+      onDragStart: this.onDragStart,
+      onWheel: this.onWheel
+    };
+  }
+}
+</script>
+</body>
+</html>
