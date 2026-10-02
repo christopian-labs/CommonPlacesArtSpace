@@ -23,8 +23,17 @@ a:hover { color:#9C6B44; border-bottom-color:#9C6B44; }
 [data-eb-body]::-webkit-scrollbar { width:3px; height:3px; }
 [data-eb-body]::-webkit-scrollbar-thumb { background:rgba(14,14,14,.22); }
 img { display:block; }
+/* prints on the wall: an open hand that reaches for the paper, closing as you press */
+[data-eb-card], [data-eb-card] * { cursor:grab !important; }
+[data-eb-card]:active, [data-eb-card]:active * { cursor:grabbing !important; }
+/* a hovered print grows past its resting box, which carries the wall shadow: drop that box's
+   shadow while hovered so no smaller frame shows behind the enlarged sheet. */
+[data-eb-card]:hover > div { box-shadow:none !important; }
 @keyframes eb-card-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
 @keyframes eb-card-fade { from { opacity:0; } to { opacity:1; } }
+/* switching Wall <-> Grid: the room being left eases out, the new one files in */
+@keyframes eb-grid-in { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
+[data-view-leaving] [data-eb-viewzone] { opacity:0 !important; transform:translateY(10px) !important; transition:opacity 180ms ease, transform 180ms ease !important; }
 @keyframes eb-stem-in { from { transform:scaleY(0); } to { transform:scaleY(1); } }
 @keyframes eb-wire-in { from { stroke-dashoffset:700; } to { stroke-dashoffset:0; } }
 @keyframes eb-panel-a { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
@@ -369,11 +378,13 @@ img { display:block; }
             <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4A4A46;">{{ mobMeta }}</span>
           </div>
           <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:-8px;">
-            <div style="display:flex;border:1px solid rgba(14,14,14,.14);border-radius:2px;overflow:hidden;">
+            <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
+              <div style="{{ mobViewInd }}"></div>
               <sc-for list="{{ mobViewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
             </div>
             <sc-if value="{{ mobIsGrid }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;border:1px solid rgba(14,14,14,.14);border-radius:2px;overflow:hidden;">
+              <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
+                <div style="{{ mobSortInd }}"></div>
                 <sc-for list="{{ mobSortBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
               </div>
             </sc-if>
@@ -452,7 +463,7 @@ img { display:block; }
             <div style="display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid rgba(14,14,14,.10);">
               <span style="font:500 9px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">Print &amp; despatch</span>
               <sc-for list="{{ mobOpen.makeRows }}" as="r" hint-placeholder-count="5">
-                <div style="display:flex;gap:12px;font:400 10px/1.5 'JetBrains Mono',monospace;color:#4A4A46;"><span style="width:64px;flex:none;color:#6A6862;">{{ r.label }}</span><span style="min-width:0;">{{ r.value }}</span></div>
+                <div style="display:flex;gap:12px;font:400 10.5px/1.55 'JetBrains Mono',monospace;color:#4A4A46;"><span style="width:68px;flex:none;color:#6A6862;">{{ r.label }}</span><span style="min-width:0;">{{ r.value }}</span></div>
               </sc-for>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-top:12px;border-top:1px solid rgba(14,14,14,.10);font:400 10px/1.6 'JetBrains Mono',monospace;letter-spacing:.04em;color:#6A6862;">
@@ -523,37 +534,32 @@ img { display:block; }
       <sc-if value="{{ z.isActive }}" hint-placeholder-val="{{ false }}">
         <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
           <div style="{{ z.railHeadStyle }}">
-            <div style="display:flex;align-items:baseline;gap:16px;min-width:0;">
-              <h2 style="margin:0;font:600 clamp(20px,2.2vw,30px)/1 Archivo,sans-serif;letter-spacing:-.035em;white-space:nowrap;">{{ z.line1 }} {{ z.line2 }}</h2>
+            <div style="height:34px;"></div>
+            <div style="position:relative;display:flex;justify-content:center;align-items:center;height:34px;">
+              <sc-if value="{{ z.isWall }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:10px;white-space:nowrap;pointer-events:none;font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#4A4A46;text-transform:uppercase;">Drag · scroll</span>
+              </sc-if>
+              <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
+                <div style="{{ z.viewInd }}"></div>
+                <sc-for list="{{ z.viewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
+              </div>
             </div>
-            <div style="flex:none;display:flex;align-items:center;gap:18px;">
+            <div style="display:flex;justify-content:flex-end;align-items:center;min-width:0;height:34px;">
               <sc-if value="{{ z.isGrid }}" hint-placeholder-val="{{ false }}">
                 <div style="display:flex;align-items:center;gap:9px;">
                   <span style="font:400 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#6A6862;text-transform:uppercase;">Sort</span>
-                  <div style="display:flex;border:1px solid rgba(14,14,14,.14);border-radius:2px;overflow:hidden;">
+                  <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
+                    <div style="{{ z.sortInd }}"></div>
                     <sc-for list="{{ z.sortBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
                   </div>
                 </div>
               </sc-if>
-              <div style="display:flex;border:1px solid rgba(14,14,14,.14);border-radius:2px;overflow:hidden;">
-                <sc-for list="{{ z.viewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
-              </div>
             </div>
-            <sc-if value="{{ z.isWall }}" hint-placeholder-val="{{ true }}">
-            <div style="flex:none;display:flex;align-items:center;gap:8px;">
-              <span style="font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#4A4A46;text-transform:uppercase;margin-right:6px;">Drag · scroll</span>
-              <span onClick="{{ z.onPrev }}" style="{{ z.navBtnStyle }}" style-hover="border-color:rgba(14,14,14,.16);color:#0E0E0E;box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);x rgba(14,14,14,.10);transform:translateY(-1px);">←</span>
-              <span onClick="{{ z.onNext }}" style="{{ z.navBtnStyle }}" style-hover="border-color:rgba(14,14,14,.16);color:#0E0E0E;box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">→</span>
-            </div>
-            </sc-if>
           </div>
 
-          <div ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;{{ z.scrollerHide }}">
+          <div data-eb-viewzone="1" ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;{{ z.scrollerHide }}">
             <div style="{{ z.trackStyle }}">
               <div data-eb-base="{{ z.baseOver }}" style="{{ z.baselineStyle }}"></div>
-              <sc-for list="{{ z.marks }}" as="m" hint-placeholder-count="6">
-                <span data-eb-year="{{ m.anchor }}" style="{{ m.style }}">{{ m.label }}</span>
-              </sc-for>
               <sc-for list="{{ z.items }}" as="it" hint-placeholder-count="11">
                 <div style="{{ it.hookStyle }}">
                   <svg width="20" height="{{ it.hookH }}" viewBox="0 0 20 {{ it.hookH }}" style="display:block;overflow:visible;">
@@ -592,9 +598,10 @@ img { display:block; }
           </div>
 
           <sc-if value="{{ z.isGrid }}" hint-placeholder-val="{{ false }}">
-            <div style="{{ z.gridWrapStyle }}">
+            <div data-eb-viewzone="1" style="{{ z.gridWrapStyle }}">
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:34px 28px;max-width:1480px;margin:0 auto;">
                 <sc-for list="{{ z.gridItems }}" as="g" hint-placeholder-count="12">
+                  <div style="{{ g.enterStyle }}">
                   <div onClick="{{ g.onClick }}" style="display:flex;flex-direction:column;gap:9px;cursor:pointer;min-width:0;transition:transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="transform:translateY(-4px);">
                     <div style="background:#FFFFFF;padding:8px 8px 7px;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.12);">
                       <div style="width:100%;aspect-ratio:1/1.414;position:relative;overflow:hidden;background:#FFFFFF;" role="img" aria-label="{{ g.title }}"><div style="{{ g.imgRotStyle }}"></div></div>
@@ -605,12 +612,14 @@ img { display:block; }
                     </div>
                     <div style="{{ g.swatchStyle }}"></div>
                   </div>
+                  </div>
                 </sc-for>
               </div>
             </div>
           </sc-if>
 
           <sc-if value="{{ z.hasOpen }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ closePiece }}" style="position:fixed;inset:0;z-index:80;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(245,248,239,.38);animation:eb-card-fade 300ms cubic-bezier(.16,.84,.32,1) both;cursor:zoom-out;"></div>
                     <div style="{{ z.openPanelStyle }}">
                     <div style="display:flex;width:100%;height:100%;">
                       <div style="{{ z.open.openPlateStyle }}">
@@ -636,11 +645,19 @@ img { display:block; }
                         <div style="{{ z.open.lineStyle1 }}">
                           <span style="{{ z.eyebrowStyle }}">{{ z.open.idx }} / {{ z.total }} — {{ z.open.year }}</span>
                           <div style="display:flex;align-items:center;gap:8px;">
-                          <span onClick="{{ z.open.onToggleBig }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">{{ z.open.bigIcon }}</span>
-                          <span onClick="{{ closePiece }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">✕</span>
+                          <span title="Expand" aria-label="Expand" onClick="{{ z.open.onToggleBig }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">{{ z.open.bigIcon }}</span>
+                          <span title="Close" aria-label="Close" onClick="{{ closePiece }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">✕</span>
                           </div>
                         </div>
                         <h3 style="{{ z.open.titleStyle }}">{{ z.open.title }}</h3>
+                        <div style="flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid rgba(14,14,14,.10);border-bottom:1px solid rgba(14,14,14,.10);">
+                          <sc-for list="{{ z.open.glance }}" as="g" hint-placeholder-count="3">
+                            <div style="padding:9px 12px 9px 0;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                              <span style="font:500 9px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">{{ g.label }}</span>
+                              <span style="font:500 12.5px/1.3 Archivo,sans-serif;color:#0E0E0E;">{{ g.value }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
                         <div data-eb-body="1" style="{{ z.open.bodyStyle }}">
                           <sc-if value="{{ z.open.hasBody1 }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#232320;">{{ z.open.body1 }}</p></sc-if>
                           <sc-if value="{{ z.open.hasBody2 }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#4A4A46;">{{ z.open.body2 }}</p></sc-if>
@@ -661,10 +678,11 @@ img { display:block; }
                             <span onClick="{{ onOpenCopyright }}" style="cursor:pointer;color:#4A4A46;border-bottom:1px solid rgba(14,14,14,.2);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.45);">Copyright &amp; Use</span>
                           </div>
                         </div>
-                        <div style="flex:none;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:11px 0 18px;border-top:1px solid rgba(14,14,14,.12);">
-                          <div style="display:flex;gap:20px;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#4A4A46;">
-                            <span onClick="{{ z.onPrev }}" style="cursor:pointer;" style-hover="color:#0E0E0E;">← PREV</span>
-                            <span onClick="{{ z.onNext }}" style="cursor:pointer;" style-hover="color:#0E0E0E;">NEXT →</span>
+                        <div style="flex:none;display:flex;flex-direction:column;gap:12px;padding:14px 0 16px;border-top:1px solid rgba(14,14,14,.12);">
+                          <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:#0E0E0E;color:#FFFFFF;border:0;text-decoration:none;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;" style-hover="background:#2A2A27;color:#FFFFFF;">Buy this print on Etsy <span aria-hidden="true">↗</span></a>
+                          <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#4A4A46;">
+                            <span onClick="{{ z.onPrev }}" style="cursor:pointer;padding:8px 4px;" style-hover="color:#0E0E0E;">← PREV</span>
+                            <span onClick="{{ z.onNext }}" style="cursor:pointer;padding:8px 4px;" style-hover="color:#0E0E0E;">NEXT →</span>
                           </div>
                         </div>
                       </div>
@@ -1318,16 +1336,20 @@ const OUT_PAD = "clamp(30px,5vw,110px)";
 
 /* Motion — 13 Sep contract. Deep ease-out, ceiling 1200ms, scrubbed values linear. */
 const EASE = "cubic-bezier(.16,.84,.32,1)";
-const D_MICRO = 280;
-const D_REVEAL = 620;
-const D_GROUND = 820;
-const D_HERO = 1040;
+const D_MICRO = 200;
+const D_REVEAL = 420;
+const D_GROUND = 560;
+const D_HERO = 520;
+const D_PANEL = 360;
+/* how far a print comes forward when hovered: scale added to 1, and px of lift */
+const HOVER_GROW = 0.14;
+const HOVER_RISE = 0; /* px a hovered print steps down; 0 keeps it hanging from its hook and grows it downward only */
 const ST_FRAME = 60;
 const ST_CAP = 480;
 const ST_LINE = 90;
 
 class Component extends DCLogic {
-  state = { detailSel: null, hoverIdx: null, mob: typeof window !== "undefined" && window.innerWidth < 760, zone: null, open: null, railW: 0, railH: 0, hover: null, roomW: 0, roomH: 0, capH: 0, bandH: 0, pre: 0, preGone: false, step: 0, wipe: false, time: "" };
+  state = { entered: false, detailSel: null, hoverIdx: null, mob: typeof window !== "undefined" && window.innerWidth < 760, zone: null, open: null, railW: 0, railH: 0, hover: null, roomW: 0, roomH: 0, capH: 0, bandH: 0, pre: 0, preGone: false, step: 0, wipe: false, time: "" };
 
   constructor(props) {
     super(props);
@@ -1728,7 +1750,16 @@ class Component extends DCLogic {
 
   enter(zone) {
     if (this.suppress) return;
-    this.setState({ zone, open: null, railW: 0, railH: 0 }, () => this.queueScrub());
+    this.setState({ zone, open: null, railW: 0, railH: 0, entered: false }, () => this.queueScrub());
+    this.settleSoon();
+  }
+
+  /* the prints fade in once when a room is entered. After that their entrance
+     animation is switched off for good, so opening and closing a piece never
+     replays it on every card. */
+  settleSoon() {
+    clearTimeout(this.settleT);
+    this.settleT = setTimeout(() => this.setState({ entered: true }), ST_CAP + ST_LINE + D_REVEAL + 250);
   }
 
   goIndex = () => this.setState({ zone: null, open: null });
@@ -1759,7 +1790,7 @@ class Component extends DCLogic {
     clearTimeout(this.lbCloseT);
     this.setState({ openPhase: 0, panelBig: false, lightboxOpen: false, lightboxPhase: 0 });
     clearTimeout(this.closeT);
-    this.closeT = setTimeout(() => this.setState({ open: null }), D_HERO);
+    this.closeT = setTimeout(() => this.setState({ open: null }), D_PANEL);
   };
 
   /* one tweened glide for every programmatic move — prev/next, open, close.
@@ -1804,8 +1835,23 @@ class Component extends DCLogic {
     if (this.state.sort) return this.state.sort;
     try { return localStorage.getItem("lol-sort") || "date"; } catch (e) { return "date"; }
   }
+  viewUi() { return this.state.viewUi || this.viewPref(); }
   setPref(k, v) {
     try { localStorage.setItem("lol-" + k, v); } catch (e) {}
+    if (k === "view" && v !== this.viewPref()) {
+      /* the switch moves at once; the room fades out, swaps, and the new one enters */
+      const root = document.documentElement;
+      this.setState({ viewUi: v });
+      root.setAttribute("data-view-leaving", "1");
+      clearTimeout(this.viewT);
+      this.viewT = setTimeout(() => {
+        this.setState(v === "wall" ? { view: v, entered: false } : { view: v }, () => {
+          requestAnimationFrame(() => root.removeAttribute("data-view-leaving"));
+        });
+        if (v === "wall") this.settleSoon();
+      }, 190);
+      return;
+    }
     this.setState({ [k]: v });
   }
   segBtns(k, opts, cur, mob) {
@@ -1814,9 +1860,13 @@ class Component extends DCLogic {
       return {
         label,
         onClick: () => this.setPref(k, v),
-        style: `cursor:pointer;display:flex;align-items:center;justify-content:center;white-space:nowrap;${mob ? "min-height:40px;padding:0 14px;" : "height:28px;padding:0 11px;"}font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;${on ? "background:#0E0E0E;color:#FFFFFF;" : "background:#FFFFFF;color:#4A4A46;"}transition:background ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`
+        style: `position:relative;z-index:1;cursor:pointer;display:flex;align-items:center;justify-content:center;white-space:nowrap;${mob ? "min-height:36px;padding:0 22px;" : "height:26px;padding:0 20px;"}font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;background:transparent;color:${on ? "#FFFFFF" : "#4A4A46"};transition:color ${D_PANEL}ms ${EASE};`
       };
     });
+  }
+  /* the dark block that slides under the selected option */
+  segInd(idx) {
+    return `position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / 2);background:#0E0E0E;transform:translateX(${idx * 100}%);transition:transform ${D_PANEL}ms ${EASE};pointer-events:none;`;
   }
   gridOrder(items) {
     const rows = items.map((it, i) => ({ it, i }));
@@ -1876,7 +1926,9 @@ class Component extends DCLogic {
     const cardHz = Math.max(56, Math.round(railH * 0.44));
     const maxDropz = Math.round(railH * 0.11);
     const blockH = HOOK_CREST + maxDropz + LAB_BAND + cardHz;
-    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2));
+    /* Wall and Grid share one content line: the wall sits higher than dead centre
+       and the grid starts lower than the switch, meeting at the same height. */
+    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2) - Math.round(railH * 0.07));
     /* the rail head sits above the scroller, so the scroller's own middle is not
        the window's middle — half the head's height corrects for it. */
     const scEl = this.refs2[zone] && this.refs2[zone].current;
@@ -1907,6 +1959,13 @@ class Component extends DCLogic {
       const body4 = nt[0] || "";
       const hangNote = nt[1] || "";
       const makeRows = GEN_MAKE.map(r => ({ label: r[0], value: r[1] }));
+      /* the three facts a buyer scans for first, lifted out of the long print list */
+      const mk = (k) => (makeRows.find(r => r.label === k) || {}).value || "";
+      const glance = [
+        { label: "Sizes", value: mk("Sizes").replace(/\s+and\s+/i, " · ") },
+        { label: "Paper", value: mk("Paper").split(",").slice(0, 2).join(",").replace(/\s*\(\d+\s*lb\)/, "") },
+        { label: "Ships", value: (mk("Despatch").match(/\d+\s*[–-]\s*\d+\s*days/) || [mk("Despatch")])[0] }
+      ].filter(g => g.value);
       /* what fits a rail label is a measured question, not a wish. The plate is
          cardW + 46 — 130px at the narrowest print — so the detail line carries year
          and size, and the third stage a short medium. Paper stock and the full
@@ -1941,7 +2000,10 @@ class Component extends DCLogic {
          hardware is a single length of wire bent over the rod, not a hook plus a
          line that happen to meet. It draws from the back tail, over the rod and
          down to the print's top edge. */
-      const stemStyle = "display:none;";
+      /* the hovered print steps down off the wall; its wire grows by the same distance so
+         the print never hangs apart from its hook. */
+      const stemHov = !isOpen && openIdx === null && this.state.hoverIdx === zone + ":" + i;
+      const stemStyle = `position:absolute;left:${stemX - 0.6}px;top:${top - 1}px;width:1.2px;height:${stemHov && HOVER_RISE > 0 ? HOVER_RISE + 2 : 0}px;background:rgba(14,14,14,.34);z-index:3;pointer-events:none;transition:height ${D_HERO}ms ${EASE};`;
       const hookH = 14 + stem;
       const hookStyle = isOpen ? "display:none;"
         : `position:absolute;left:${stemX - 11}px;top:${baseline - 14}px;width:20px;height:${hookH}px;z-index:3;pointer-events:none;`;
@@ -1972,14 +2034,14 @@ class Component extends DCLogic {
         isOpen ? "z-index:90" : lift ? "z-index:30" : "z-index:5",
         "box-sizing:border-box", "cursor:pointer",
         `transition:left ${D_HERO}ms ${EASE},top ${D_HERO}ms ${EASE},width ${D_HERO}ms ${EASE},height ${D_HERO}ms ${EASE},filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE}`,
-        `filter:blur(${recede ? 5 : 0}px)`, `opacity:${isOpen ? 0 : recede ? 0.45 : 1}`,
+        `filter:none`, `opacity:${isOpen ? 0 : recede ? 0.45 : 1}`,
         `pointer-events:${isOpen || recede ? "none" : "auto"}`,
         /* a `both`-filled arrival animation outranks an inline opacity, so the
            open card drops its animation rather than fighting it. The arrival is
            opacity only: the hook, the wire and the label are pinned to this box's
            authored `top`, so nothing may move it — a rise here would leave the
            print hanging 28px below its own wire. */
-        isOpen || recede ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
+        isOpen || recede || this.state.entered ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
       ].join(";") + ";";
       const hoverOuterStyle = isOpen ? "" : "z-index:30;";
       const innerStyle = [
@@ -1991,17 +2053,17 @@ class Component extends DCLogic {
         /* hover = the piece steps off the wall: it lifts away from its hook,
             comes forward, and takes the centre cast from the frame spec so the
             air under it reads. Nothing else on the wall moves. */
-        isOpen ? "" : `transform:scale(${(restScale + (lift ? .045 : 0)).toFixed(3)})${lift ? " translateY(" + (above ? "-3px" : "3px") + ")" : ""};transform-origin:center ${above ? "bottom" : "top"};will-change:transform`,
+        isOpen ? "" : `transform:scale(${(restScale + (lift ? HOVER_GROW : 0)).toFixed(3)})${lift ? " translateY(" + (above ? "-" + HOVER_RISE + "px" : HOVER_RISE + "px") + ")" : ""};transform-origin:center ${above ? "bottom" : "top"};will-change:transform`,
         isOpen ? "" : (lift ? `box-shadow:${nearShadow}` : "box-shadow:none"),
         /* the warp rides the whole piece — white mount included — so the sheet
            and its border curl together instead of the paper moving inside a
            rigid card. */
-        isOpen ? "" : `filter:url(#eb-wind-s-${i % 4})`
+        ""
       ].filter(Boolean).join(";") + ";";
       /* hover = the piece steps off the wall: it lifts a little, comes forward,
          and takes the centre cast from the frame spec so the air under it reads.
          Nothing else on the wall moves. */
-      const hoverInnerStyle = isOpen ? "" : `transform:scale(${(restScale + 0.045).toFixed(3)}) translateY(${above ? "-3px" : "3px"});transform-origin:center ${above ? "bottom" : "top"};box-shadow:${nearShadow};`;
+      const hoverInnerStyle = isOpen ? "" : `transform:scale(${(restScale + HOVER_GROW).toFixed(3)}) translateY(${above ? "-" + HOVER_RISE : HOVER_RISE}px);transform-origin:center ${above ? "bottom" : "top"};box-shadow:${nearShadow};`;
       /* two motions, one breeze: the frame swings from its hook (this wrapper),
          and the paper inside it warps on an animated displacement mesh (the
          plate's own filter). Both are infinite, phase-offset per print, and
@@ -2016,7 +2078,7 @@ class Component extends DCLogic {
       const tiltF = (0.82 + (i % 5) * 0.09).toFixed(2);
       const lineAnim = (d) => `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${d}ms both;`;
       items.push({
-        title, year, metaRows, edition, body1, body2, body3, body4, hangNote, makeRows,
+        title, year, metaRows, edition, body1, body2, body3, body4, hangNote, makeRows, glance,
         bigIcon: big ? "⤡" : "⤢",
         onToggleBig: () => this.setState(s => ({ panelBig: !s.panelBig })),
         hasBody1: !!body1, hasBody2: !!body2, hasBody3: !!body3, hasBody4: !!body4,
@@ -2029,9 +2091,9 @@ class Component extends DCLogic {
            the wire is in front of the wall, the label is painted on it, and the
            two must not cross. */
         labelStyle: isOpen ? "display:none;"
-          : `filter:blur(${recede ? 4 : 0}px);opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
+          : `filter:none;opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
         labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
-        plateStyle: `width:calc(100% - 5px);height:calc(100% - 5px);margin:2.5px;position:relative;overflow:hidden;background:#FFFFFF;filter:url(#eb-wind-sm-${i % 4}) brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
+        plateStyle: `width:calc(100% - 5px);height:calc(100% - 5px);margin:2.5px;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
         plateRotStyle: ROTATE_CW_TITLES.has(title)
           ? `position:absolute;top:50%;left:50%;width:${cardH - 5}px;height:${cardW - 5}px;transform:translate(-50%,-50%) rotate(90deg);background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`
           : `position:absolute;inset:0;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`,
@@ -2263,8 +2325,9 @@ class Component extends DCLogic {
     const isGrid = this.viewPref() === "grid";
     const scElG = this.refs2[zone] && this.refs2[zone].current;
     const gTop = scElG ? scElG.offsetTop : (this.state.bandH || 108) + 80;
-    const gridItems = (laid && isGrid) ? this.gridOrder(laid.items).map(({ it, i }) => ({
+    const gridItems = (laid && isGrid) ? this.gridOrder(laid.items).map(({ it, i }, pos) => ({
       title: it.title, idx: it.idx,
+      enterStyle: `animation:eb-grid-in 520ms ${EASE} ${Math.min(pos * 26, 700)}ms both;`,
       swatchStyle: `height:5px;width:100%;border-radius:3px;background:${it.swatch};`,
       imgRotStyle: this.plateImg(it),
       onClick: () => this.openPiece(zone, i)
@@ -2272,11 +2335,13 @@ class Component extends DCLogic {
     return {
       isGrid, isWall: !isGrid, gridItems,
       scrollerHide: isGrid ? "visibility:hidden;pointer-events:none;" : "",
-      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:${gTop}px;z-index:4;overflow-y:auto;box-sizing:border-box;padding:14px 36px 96px;filter:blur(${anyOpen ? 6 : 0}px);opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
-      viewBtns: this.segBtns("view", [["wall", "Wall"], ["grid", "Grid"]], this.viewPref(), false),
+      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:${gTop + Math.round((typeof window !== "undefined" ? window.innerHeight : 900) * 0.16)}px;z-index:4;overflow-y:auto;box-sizing:border-box;padding:14px 36px 96px;filter:none;opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
+      viewBtns: this.segBtns("view", [["wall", "Wall"], ["grid", "Grid"]], this.viewUi(), false),
+      viewInd: this.segInd(this.viewUi() === "grid" ? 1 : 0),
+      sortInd: this.segInd(this.sortPref() === "colour" ? 1 : 0),
       sortBtns: this.segBtns("sort", [["date", "Date"], ["colour", "Colour"]], this.sortPref(), false),
       paneStyle, eyebrowStyle, navBtnStyle, peek, ticks,
-      railHeadStyle: `flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:blur(${anyOpen ? 6 : 0}px);opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
+      railHeadStyle: `flex:none;display:grid;grid-template-columns:1fr auto 1fr;justify-content:space-between;align-items:center;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:none;opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
       peekRowStyle: "flex:1;min-height:0;display:flex;gap:18px;align-items:flex-start;margin:0 -70px 22px 0;pointer-events:none;overflow:hidden;",
       introTextStyle: "flex:none;display:flex;flex-direction:column;gap:12px;max-width:420px;",
       isIntro: isIndex, isSpine: other, isActive: active,
@@ -2299,7 +2364,7 @@ class Component extends DCLogic {
       total: String(list.length).padStart(2, "0"),
       spineArrow: isPhoto ? "←" : "→",
       spineShortLabel: isPhoto ? "Photography" : "Abstract Art",
-      spineWrapStyle: `filter:blur(${anyOpen ? 5 : 0}px);opacity:${anyOpen ? 0.4 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;inset:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-${isPhoto ? "right" : "left"}:1px solid rgba(14,14,14,.08);background:rgba(245,248,239,.20);backdrop-filter:blur(16px) saturate(1.05);-webkit-backdrop-filter:blur(16px) saturate(1.05);transition:opacity ${D_MICRO}ms ${EASE},backdrop-filter ${D_MICRO}ms ${EASE};`,
+      spineWrapStyle: `filter:none;opacity:${anyOpen ? 0.4 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;inset:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-${isPhoto ? "right" : "left"}:1px solid rgba(14,14,14,.08);background:rgba(245,248,239,.20);backdrop-filter:blur(16px) saturate(1.05);-webkit-backdrop-filter:blur(16px) saturate(1.05);transition:opacity ${D_MICRO}ms ${EASE},backdrop-filter ${D_MICRO}ms ${EASE};`,
       /* under the glass: the room the user is in, continuing past its own edge.
          The track is the live hang at the live rail position — the scrub engine
          drives its offset — so the spine blurs what is on screen now. */
@@ -2332,22 +2397,26 @@ class Component extends DCLogic {
          the print's resting rect (in room coordinates), phase 1 is the centre; the
          tween between them is the expand. */
       openPanelStyle: (() => {
-        if (!laid || openIdx === null || !laid.openFrom) return "display:none;";
+        if (!laid || openIdx === null) return "display:none;";
         const { h: railH, w: railW } = this.railBox();
-        const f = laid.openFrom, pw = laid.panelW, ph = laid.panelH;
+        const pw = laid.panelW, ph = laid.panelH;
         const sc = this.state.openScroll || 0;
         const shift = 0;
         const open = this.state.openPhase === 1;
-        const L = open ? Math.round((railW - pw) / 2 + shift) : Math.round(f.x - sc);
-        const T = open ? Math.round((laid.headH + railH - ph) / 2) : Math.round(laid.headH + f.top);
+        /* the panel is laid out at its final size and place from the first frame, so its
+           text never reflows; opening is only a fade and a short rise. */
+        const L = Math.round((railW - pw) / 2 + shift);
+        const T = Math.round((laid.headH + railH - ph) / 2);
         return [
           "position:absolute", `left:${L}px`, `top:${T}px`,
-          `width:${open ? pw : f.w}px`, `height:${open ? ph : f.h}px`,
+          `width:${pw}px`, `height:${ph}px`,
           "z-index:90", "box-sizing:border-box", "overflow:hidden", "background:#FFFFFF",
-          `border:1px solid rgba(14,14,14,${open ? ".20" : ".13"})`,
-          `box-shadow:${open ? "1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)" : "none"}`,
-          `opacity:${open ? 1 : 0.9}`,
-          `transition:left ${D_HERO}ms ${EASE},top ${D_HERO}ms ${EASE},width ${D_HERO}ms ${EASE},height ${D_HERO}ms ${EASE},box-shadow ${D_HERO}ms ${EASE},opacity ${D_MICRO}ms ${EASE}`
+          "border:1px solid rgba(14,14,14,.20)",
+          "box-shadow:1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)",
+          `opacity:${open ? 1 : 0}`,
+          `transform:${open ? "none" : "translateY(18px)"}`,
+          "will-change:opacity,transform",
+          `transition:opacity ${D_PANEL}ms ${EASE},transform ${D_PANEL}ms ${EASE}`
         ].join(";") + ";";
       })(),
       marks: laid ? laid.marks : [],
@@ -2385,7 +2454,7 @@ class Component extends DCLogic {
       const on = key === null ? !at : at === key;
       return {
         label,
-        onClick: () => (key === null ? this.setState({ zone: null, open: null }) : this.setState({ zone: key, open: null })),
+        onClick: () => { if (key === null) this.setState({ zone: null, open: null }); else { this.setState({ zone: key, open: null, entered: false }); this.settleSoon(); } },
         style: [
           "cursor:pointer", "white-space:nowrap", "width:fit-content",
           `font:${on ? 600 : 500} 10px/1 'JetBrains Mono',monospace`, "letter-spacing:.2em", "text-transform:uppercase",
@@ -2511,7 +2580,9 @@ class Component extends DCLogic {
     })) : [];
     const mobVals = {
       mobIsGrid: mobGrid, mobIsList: !mobGrid, mobGridItems,
-      mobViewBtns: this.segBtns("view", [["wall", "List"], ["grid", "Grid"]], this.viewPref(), true),
+      mobViewBtns: this.segBtns("view", [["wall", "List"], ["grid", "Grid"]], this.viewUi(), true),
+      mobViewInd: this.segInd(this.viewUi() === "grid" ? 1 : 0),
+      mobSortInd: this.segInd(this.sortPref() === "colour" ? 1 : 0),
       mobSortBtns: this.segBtns("sort", [["date", "Date"], ["colour", "Colour"]], this.sortPref(), true),
       isMob: mob, isDesk: !mob,
       totalPrints: PHOTOS.length + GEN.length,
