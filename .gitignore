@@ -7,3 +7,7 @@ ehthumbs.db
 Desktop.ini
 .vscode/
 .idea/
+
+# source originals (large) — kept locally, not in git
+LOL Art Space*/
+.tmp.drive*/
