@@ -23,6 +23,14 @@ a:hover { color:#9C6B44; border-bottom-color:#9C6B44; }
 [data-eb-body]::-webkit-scrollbar { width:3px; height:3px; }
 [data-eb-body]::-webkit-scrollbar-thumb { background:rgba(14,14,14,.22); }
 img { display:block; }
+/* Grid scroll: --gp runs 0..1 as the grid scrolls (set by the scroll handler). The toggles and the left menu
+   fade with it and stop taking clicks once mostly gone. On phones the top bar slides away on scroll down
+   and returns on scroll up. */
+html[data-grid-faded] [data-eb-gridfade] { pointer-events:none !important; }
+html[data-gridfx] [data-eb-gridfade] { transition:none !important; }  /* scroll-driven, so it must follow the scroll with no easing */
+[data-eb-mobbar] { transition:transform 280ms cubic-bezier(.16,.84,.32,1); will-change:transform; }
+html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
+@media (prefers-reduced-motion: reduce) { [data-eb-mobbar] { transition:none; } }
 /* prints on the wall: an open hand that reaches for the paper, closing as you press */
 [data-eb-card], [data-eb-card] * { cursor:grab !important; }
 [data-eb-card]:active, [data-eb-card]:active * { cursor:grabbing !important; }
@@ -322,7 +330,7 @@ img { display:block; }
   <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
     <div style="position:relative;z-index:20;display:flex;flex-direction:column;">
 
-      <div style="position:sticky;top:0;z-index:40;display:flex;flex-direction:column;padding:4px 12px 4px 20px;background:rgba(245,248,239,.96);border-bottom:1px solid rgba(14,14,14,.08);">
+      <div data-eb-mobbar="1" style="position:sticky;top:0;z-index:40;display:flex;flex-direction:column;padding:4px 12px 4px 20px;background:rgba(245,248,239,.96);border-bottom:1px solid rgba(14,14,14,.08);">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="{{ markStyle }}"></span>
@@ -496,7 +504,7 @@ img { display:block; }
   <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
   <div ref="{{ bandRef }}" style="{{ bandOuterStyle }}">
 
-    <nav style="{{ navWrapStyle }}">
+    <nav data-eb-gridfade="1" style="{{ navWrapStyle }}">
       <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
         <span onClick="{{ n.onClick }}" style="{{ n.style }}" style-hover="color:#0E0E0E;">{{ n.label }}</span>
       </sc-for>
@@ -543,7 +551,7 @@ img { display:block; }
 
       <sc-if value="{{ z.isActive }}" hint-placeholder-val="{{ false }}">
         <div style="position:absolute;inset:0;display:flex;flex-direction:column;">
-          <div style="{{ z.railHeadStyle }}">
+          <div data-eb-gridfade="1" style="{{ z.railHeadStyle }}">
             <div style="height:34px;"></div>
             <div style="position:relative;display:flex;justify-content:center;align-items:center;height:34px;">
               <sc-if value="{{ z.isWall }}" hint-placeholder-val="{{ true }}">
@@ -608,12 +616,12 @@ img { display:block; }
           </div>
 
           <sc-if value="{{ z.isGrid }}" hint-placeholder-val="{{ false }}">
-            <div data-eb-viewzone="1" style="{{ z.gridWrapStyle }}">
+            <div data-eb-viewzone="1" data-eb-gridwrap="1" style="{{ z.gridWrapStyle }}">
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:34px 28px;max-width:1480px;margin:0 auto;">
                 <sc-for list="{{ z.gridItems }}" as="g" hint-placeholder-count="12">
                   <div style="{{ g.enterStyle }}">
                   <div onClick="{{ g.onClick }}" style="display:flex;flex-direction:column;gap:9px;cursor:pointer;min-width:0;transition:transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="transform:translateY(-4px);">
-                    <div style="background:#FFFFFF;padding:8px 8px 7px;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.12);">
+                    <div style="background:#FFFFFF;padding:0;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.12);">
                       <div style="width:100%;aspect-ratio:1/1.414;position:relative;overflow:hidden;background:#FFFFFF;" role="img" aria-label="{{ g.title }}"><div style="{{ g.imgRotStyle }}"></div></div>
                     </div>
                     <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
@@ -1355,6 +1363,9 @@ const D_REVEAL = 420;
 const D_GROUND = 560;
 const D_HERO = 520;
 const D_PANEL = 360;
+/* how far the grid scrolls (px) before the controls are fully faded and the grid fills the screen */
+const GRID_FADE_PX = 140;
+const GRID_TOP_FADE = 120;  /* px of soft fade at the grid's top edge while it is scrolled */
 /* how far a print comes forward when hovered: scale added to 1, and px of lift */
 const HOVER_GROW = 0.14;
 const HOVER_RISE = 0; /* px a hovered print steps down; 0 keeps it hanging from its hook and grows it downward only */
@@ -1415,6 +1426,9 @@ class Component extends DCLogic {
     window.addEventListener("mousemove", this.onDragMove);
     window.addEventListener("mouseup", this.onDragEnd);
     window.addEventListener("keydown", this.onKey);
+    /* scroll does not bubble, so listen in the capture phase on the room */
+    this.roomScrollEl = this.roomRef.current;
+    if (this.roomScrollEl) this.roomScrollEl.addEventListener("scroll", this.onRoomScroll, true);
     this.attach();
     this.queueScrub();
     this.measureRoom();
@@ -1504,7 +1518,36 @@ class Component extends DCLogic {
     if (t !== this.state.time) this.setState({ time: t });
   };
 
+  /* Grid view: scrolling the grid fades the toggles and menu and lets the grid fill the screen.
+     Phones: the top bar hides on scroll down and returns on scroll up. Both run off one scroll
+     listener and write straight to the page root, so scrolling never triggers a re-render. */
+  onRoomScroll = (e) => {
+    const root = document.documentElement, t = e.target;
+    if (this.state.mob) {
+      if (t !== this.roomRef.current) return;
+      const st = t.scrollTop, d = st - (this._lastSt || 0);
+      this._lastSt = st;
+      if (st <= 8 || d < -4) root.removeAttribute("data-mobbar-hidden");
+      else if (d > 6 && st > 80) root.setAttribute("data-mobbar-hidden", "1");
+      return;
+    }
+    if (!t || !t.hasAttribute || !t.hasAttribute("data-eb-gridwrap")) return;
+    const p = Math.min(1, Math.max(0, t.scrollTop / GRID_FADE_PX));
+    root.style.setProperty("--gp", p.toFixed(3));
+    if (p > 0) root.setAttribute("data-gridfx", "1"); else root.removeAttribute("data-gridfx");
+    if (p > 0.55) root.setAttribute("data-grid-faded", "1"); else root.removeAttribute("data-grid-faded");
+  };
+  resetScrollFx() {
+    const root = document.documentElement;
+    if (root.style.getPropertyValue("--gp")) root.style.removeProperty("--gp");
+    root.removeAttribute("data-grid-faded");
+    root.removeAttribute("data-gridfx");
+    if (!this.state.mob) root.removeAttribute("data-mobbar-hidden");
+  }
+
   componentDidUpdate() {
+    /* leaving the grid (or the room) puts the controls and menu back */
+    if (!(this.state.zone && this.viewPref() === "grid") || this.state.mob) this.resetScrollFx();
     this.attach(); this.queueScrub();
     if (this.roomRO && this.roomRef.current) { this.roomRO.disconnect(); this.roomRO.observe(this.roomRef.current); }
     if (this.capRO) {
@@ -1523,6 +1566,7 @@ class Component extends DCLogic {
     window.removeEventListener("mousemove", this.onDragMove);
     window.removeEventListener("mouseup", this.onDragEnd);
     window.removeEventListener("keydown", this.onKey);
+    if (this.roomScrollEl) this.roomScrollEl.removeEventListener("scroll", this.onRoomScroll, true);
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.momRaf);
     clearTimeout(this.scrubT);
@@ -1994,8 +2038,8 @@ class Component extends DCLogic {
       const drop = Math.round(railH * (0.03 + dropN * 0.08));
       let cardH = cardHz;
       let stem = drop + LAB_H + LAB_GAP;
-      let imgH = cardH - 16;
-      const cardW = Math.round(imgH / AR) + 18;
+      let imgH = cardH;  /* no mat: the print's own border is the frame */
+      const cardW = Math.round(imgH / AR);
       const top = baseline + stem;
       /* the wall's geometry never changes when a print opens — the panel is a
          room-level overlay, so the print's hook stays exactly where it was and
@@ -2054,7 +2098,7 @@ class Component extends DCLogic {
       const innerStyle = [
         "width:100%", "height:100%", "box-sizing:border-box", "overflow:hidden",
         "background:#FFFFFF", isOpen ? "border:1px solid rgba(14,14,14,.20)" : "border:0",
-        isOpen ? "padding:0" : "padding:9px 9px 7px",
+        "padding:0",
         isOpen ? "box-shadow:1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)" : "",
         `transition:border-color ${D_HERO}ms ${EASE},box-shadow ${D_HERO}ms ${EASE},padding ${D_HERO}ms ${EASE},transform ${D_HERO}ms ${EASE}`,
         /* hover = the piece steps off the wall: it lifts away from its hook,
@@ -2101,9 +2145,9 @@ class Component extends DCLogic {
         labelStyle: isOpen ? "display:none;"
           : `filter:none;opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
         labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
-        plateStyle: `width:calc(100% - 5px);height:calc(100% - 5px);margin:2.5px;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
+        plateStyle: `width:100%;height:100%;margin:0;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
         plateRotStyle: ROTATE_CW_TITLES.has(title)
-          ? `position:absolute;top:50%;left:50%;width:${cardH - 5}px;height:${cardW - 5}px;transform:translate(-50%,-50%) rotate(90deg);background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`
+          ? `position:absolute;top:50%;left:50%;width:${cardH}px;height:${cardW}px;transform:translate(-50%,-50%) rotate(90deg);background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`
           : `position:absolute;inset:0;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`,
         hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF,
         onEnterCard: isOpen ? undefined : () => this.setState({ hoverIdx: zone + ":" + i }),
@@ -2237,7 +2281,7 @@ class Component extends DCLogic {
        push the pile up through the headline, the parts yield in a stated order:
        the gaps close, the overhang tightens, and the caption's type steps down.
        Only when all three are spent does the print sit on its 96px floor. */
-    const PW_FLOOR = 96, PLATE_PAD = 18;
+    const PW_FLOOR = 96, PLATE_PAD = 0;
     const avail = vh - linesBot - topGap - botPad;
     const fit = (b, g, c) => Math.max(PW_FLOOR, Math.min((avail - pillH - c - g * 2 - b - 16) / 1.414, vw * .22, 380));
     const need = (b, g, c) => PW_FLOOR * 1.414 + 16 + b + pillH + g * 2 + c;
@@ -2308,8 +2352,8 @@ class Component extends DCLogic {
       const src = IMG(list[this.pileIdx[zone][k] % list.length][0], edge ? 380 : 520);
       return {
         frameStyle: [
-          "position:absolute", "left:0", "top:0", `width:calc(${PW} + 18px)`, "box-sizing:border-box",
-          "background:#FFF", "border:1px solid rgba(14,14,14,.13)", edge ? "padding:4px 4px 3px" : "padding:9px 9px 7px",
+          "position:absolute", "left:0", "top:0", `width:${PW}`, "box-sizing:border-box",
+          "background:#FFF", "border:0", "padding:0",
           `box-shadow:${front && hot ? CAST_HOT : cast(k / 4)}`,
           `transform:${hot ? FAN[k] : REST[k]}`, "transform-origin:50% 100%",
           "z-index:" + k, "backface-visibility:hidden",
@@ -2343,21 +2387,21 @@ class Component extends DCLogic {
     return {
       isGrid, isWall: !isGrid, gridItems,
       scrollerHide: isGrid ? "visibility:hidden;pointer-events:none;" : "",
-      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:${gTop + Math.round((typeof window !== "undefined" ? window.innerHeight : 900) * 0.16)}px;z-index:4;overflow-y:auto;box-sizing:border-box;padding:14px 36px 96px;filter:none;opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
+      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:calc(${gTop + Math.round((typeof window !== "undefined" ? window.innerHeight : 900) * 0.16)}px * (1 - var(--gp, 0)));z-index:4;overflow-y:auto;-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));box-sizing:border-box;padding:14px 36px 96px;filter:none;opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
       viewBtns: this.segBtns("view", [["wall", "Wall"], ["grid", "Grid"]], this.viewUi(), false),
       viewInd: this.segInd(this.viewUi() === "grid" ? 1 : 0),
       sortInd: this.segInd(this.sortPref() === "colour" ? 1 : 0),
       sortBtns: this.segBtns("sort", [["date", "Date"], ["colour", "Colour"]], this.sortPref(), false),
       paneStyle, eyebrowStyle, navBtnStyle, peek, ticks,
-      railHeadStyle: `flex:none;display:grid;grid-template-columns:1fr auto 1fr;justify-content:space-between;align-items:center;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:none;opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
+      railHeadStyle: `flex:none;display:grid;grid-template-columns:1fr auto 1fr;justify-content:space-between;align-items:center;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:opacity(calc(1 - var(--gp, 0)));opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
       peekRowStyle: "flex:1;min-height:0;display:flex;gap:18px;align-items:flex-start;margin:0 -70px 22px 0;pointer-events:none;overflow:hidden;",
       introTextStyle: "flex:none;display:flex;flex-direction:column;gap:12px;max-width:420px;",
       isIntro: isIndex, isSpine: other, isActive: active,
       clusterWrapStyle: `position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:${isPhoto ? "flex-end" : "flex-start"};justify-content:center;padding:${linesBot + topGap}px ${isPhoto ? IN_PAD : OUT_PAD} ${botPad}px ${isPhoto ? OUT_PAD : IN_PAD};box-sizing:border-box;`,
       clusterGroupStyle: `pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:${gapN}px;width:fit-content;max-width:100%;`,
-      stackStyle: `position:relative;flex:none;width:calc(${PW} + 18px);height:calc(${PW} * 1.414 + 16px);margin-bottom:${bleed}px;perspective:${Math.round(pwNum * 5.2)}px;perspective-origin:50% 42%;transform-style:preserve-3d;`
+      stackStyle: `position:relative;flex:none;width:${PW};height:calc(${PW} * 1.414);margin-bottom:${bleed}px;perspective:${Math.round(pwNum * 5.2)}px;perspective-origin:50% 42%;transform-style:preserve-3d;`
         + (isIndex ? (this.state.arrive ? `animation:eb-pile-in ${D_HERO}ms ${EASE} ${isPhoto ? 0 : 110}ms both;` : "opacity:0;") : ""),
-      pillStyle: `display:flex;align-items:center;justify-content:space-between;gap:16px;width:calc(${PW} + 18px);box-sizing:border-box;padding:min(10px,1.2vh) min(16px,1.4vw);border:1px solid rgba(14,14,14,${hot ? ".30" : ".16"});background:${hot ? "#FFFFFF" : "transparent"};box-shadow:${hot ? "0 1px 2px rgba(14,14,14,.06),0 6px 16px rgba(14,14,14,.10)" : "none"};transform:translateY(${hot ? "-1px" : "0"});font:500 clamp(9.5px,min(.8vw,1.3vh),13px)/1 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:${hot ? "#0E0E0E" : "#3A3A36"};transition:background ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE},transform ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`,
+      pillStyle: `display:flex;align-items:center;justify-content:space-between;gap:16px;width:${PW};box-sizing:border-box;padding:min(10px,1.2vh) min(16px,1.4vw);border:1px solid rgba(14,14,14,${hot ? ".30" : ".16"});background:${hot ? "#FFFFFF" : "transparent"};box-shadow:${hot ? "0 1px 2px rgba(14,14,14,.06),0 6px 16px rgba(14,14,14,.10)" : "none"};transform:translateY(${hot ? "-1px" : "0"});font:500 clamp(9.5px,min(.8vw,1.3vh),13px)/1 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:${hot ? "#0E0E0E" : "#3A3A36"};transition:background ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE},box-shadow ${D_MICRO}ms ${EASE},transform ${D_MICRO}ms ${EASE},color ${D_MICRO}ms ${EASE};`,
       pillIdx: isPhoto ? "01" : "02",
       pillLabel: isPhoto ? "Photography" : "Abstract Art",
       capRef: this.capRefs[zone],
@@ -2377,7 +2421,7 @@ class Component extends DCLogic {
          The track is the live hang at the live rail position — the scrub engine
          drives its offset — so the spine blurs what is on screen now. */
       spineMirror: mirror ? mirror.items.map(it => ({
-        style: `position:absolute;left:${it.left}px;top:${mirror.headH + it.top}px;width:${it.w}px;height:${it.h}px;box-sizing:border-box;background:#FFFFFF;padding:9px 9px 7px;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13);`,
+        style: `position:absolute;left:${it.left}px;top:${mirror.headH + it.top}px;width:${it.w}px;height:${it.h}px;box-sizing:border-box;background:#FFFFFF;padding:0;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13);`,
         imgStyle: `width:100%;height:100%;background:#FFFFFF url("${it.img}") no-repeat center/contain;`
       })) : [],
       spineMirrorOff: String(mirror ? (isPhoto ? SPINE : -(vw - SPINE)) : 0),
@@ -2548,7 +2592,7 @@ class Component extends DCLogic {
         /* one cheap transform loop survives: the swing. The warp meshes do not —
            eight animated displacement filters is a phone-melting bill for an
            effect nobody can see at 335px. */
-        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:9px 9px 7px;cursor:pointer;"
+        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:0;cursor:pointer;"
           + "box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13);"
           + "transform-origin:50% 0%;animation:eb-swing-r " + (5.2 + (i % 5) * 0.6).toFixed(2)
           + "s ease-in-out " + (-(i % 7) * 0.8).toFixed(2) + "s infinite;",
@@ -2570,7 +2614,7 @@ class Component extends DCLogic {
       return {
         n: w.n, line: w.line, meta: w.meta, cta: "Enter the wall →",
         wrapStyle: "display:flex;flex-direction:column;gap:15px;cursor:pointer;",
-        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:11px 11px 9px;"
+        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:0;"
           + "box-shadow:1px 1px 2px rgba(14,14,14,.10),7px 20px 40px rgba(14,14,14,.15);",
         imgStyle: 'width:100%;aspect-ratio:1/1.414;background:#FFFFFF url("' + w.img + '") no-repeat center/contain;',
         numStyle: "font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:" + w.accent + ";",
@@ -2662,7 +2706,7 @@ class Component extends DCLogic {
         const mix = []; for (let i = 0; i < 6; i++) { mix.push(GEN[i % GEN.length]); mix.push(PHOTOS[(i + 4) % PHOTOS.length]); }
         return mix.map(row => ({ style: `background:#dcd8ce url("${IMG(row[0], 380)}") no-repeat center/cover;` }));
       })(),
-      navWrapStyle: `pointer-events:${this.state.open !== null ? "none" : "auto"};display:flex;flex-direction:column;gap:11px;`,
+      navWrapStyle: `opacity:calc(1 - var(--gp, 0));pointer-events:${this.state.open !== null ? "none" : "auto"};display:flex;flex-direction:column;gap:11px;`,
       bandRef: this.bandRef,
       bandHeadlineStyle: `display:${this.state.zone ? "none" : "flex"};align-items:flex-start;padding-top:1px;`,
       bandCentreStyle: `display:${this.state.zone ? "none" : "flex"};flex-direction:column;gap:13px;`,
