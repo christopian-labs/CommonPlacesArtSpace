@@ -356,17 +356,24 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
         <div style="display:flex;flex-direction:column;gap:30px;padding:26px 20px 64px;">
           <h1 style="margin:0;font:600 27px/1.12 Archivo,sans-serif;letter-spacing:-.032em;color:#0E0E0E;text-wrap:pretty;">The Language of Life - LOL Art Space</h1>
           <p style="margin:0;font:400 12px/1.75 'JetBrains Mono',monospace;letter-spacing:.045em;color:#4A4A46;text-wrap:pretty;">Visual storytelling through a different lens. Available in A4 and A3 on FSC-certified paper using giclée fine art 12-colour printing technology.</p>
-          <sc-for list="{{ mobWalls }}" as="w" hint-placeholder-count="2">
-            <div onClick="{{ w.onClick }}" style="{{ w.wrapStyle }}">
-              <div style="{{ w.frameStyle }}"><div style="{{ w.imgStyle }}"></div></div>
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <span style="{{ w.numStyle }}">{{ w.n }}</span>
-                <h2 style="margin:0;font:600 21px/1.1 Archivo,sans-serif;letter-spacing:-.03em;color:#0E0E0E;">{{ w.line }}</h2>
-                <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#4A4A46;">{{ w.meta }}</span>
-                <span style="{{ w.ctaStyle }}">{{ w.cta }}</span>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px;align-items:start;">
+            <sc-for list="{{ mobWalls }}" as="w" hint-placeholder-count="2">
+              <div onClick="{{ w.onClick }}" style="{{ w.wrapStyle }}">
+                <div style="{{ w.stackStyle }}">
+                  <sc-for list="{{ w.backs }}" as="b" hint-placeholder-count="3">
+                    <div style="{{ b.style }}"></div>
+                  </sc-for>
+                  <div style="{{ w.frameStyle }}"><div style="{{ w.imgStyle }}"></div></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <span style="{{ w.numStyle }}">{{ w.n }}</span>
+                  <h2 style="margin:0;font:600 18px/1.1 Archivo,sans-serif;letter-spacing:-.03em;color:#0E0E0E;">{{ w.line }}</h2>
+                  <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#4A4A46;">{{ w.meta }}</span>
+                  <span style="{{ w.ctaStyle }}">{{ w.cta }}</span>
+                </div>
               </div>
-            </div>
-          </sc-for>
+            </sc-for>
+          </div>
           <div style="display:flex;flex-direction:column;gap:12px;padding-top:6px;border-top:1px solid rgba(14,14,14,.10);">
             <span style="font:400 10px/1.5 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#6A6862;">The LOL Art Space</span>
             <a href="https://www.etsy.com/shop/CommonPlacesArtSpace" target="_blank" rel="noopener" style="align-self:flex-start;min-height:44px;display:flex;align-items:center;font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#4A4A46;text-decoration:none;border-bottom:1px solid rgba(14,14,14,.18);">Etsy Store</a>
@@ -470,6 +477,7 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
             </div></sc-if>
             <sc-if value="{{ mobOpen.hasEtsy }}" hint-placeholder-val="{{ true }}">
               <a href="{{ mobOpen.etsyUrl }}" target="_blank" rel="noopener" style="align-self:flex-start;min-height:44px;display:inline-flex;align-items:center;gap:6px;border:0;text-decoration:none;font:500 11.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#9C6B44;" style-hover="color:#5E3F25;">Available on Etsy <span aria-hidden="true">↗</span></a>
+              <span style="margin:-6px 0 4px;font:400 11px/1.55 'JetBrains Mono',monospace;letter-spacing:.04em;color:#6A6862;">Try it on your wall with AR in the Etsy app.</span>
             </sc-if>
             <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px;border-top:1px solid rgba(14,14,14,.10);">
               <button type="button" onClick="{{ onToggleMake }}" aria-label="Show or hide print and despatch details" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
@@ -679,6 +687,7 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                           </div></sc-if>
                           <sc-if value="{{ z.open.hasEtsy }}" hint-placeholder-val="{{ true }}">
                             <a href="{{ z.open.etsyUrl }}" target="_blank" rel="noopener" style="align-self:flex-start;margin:8px 0 0;display:inline-flex;align-items:center;gap:6px;min-height:28px;border:0;text-decoration:none;font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#9C6B44;" style-hover="color:#5E3F25;">Available on Etsy <span aria-hidden="true">↗</span></a>
+                            <span style="margin:-2px 0 0;font:400 11px/1.5 'JetBrains Mono',monospace;letter-spacing:.04em;color:#6A6862;">Try it on your wall with AR in the Etsy app.</span>
                           </sc-if>
                           <div style="margin:10px 0 2px;display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid rgba(14,14,14,.10);">
                             <button type="button" onClick="{{ onToggleMake }}" aria-label="Show or hide print and despatch details" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;min-height:36px;" style-hover="opacity:.7;">
@@ -2605,21 +2614,35 @@ class Component extends DCLogic {
     });
     const mobOpenIt = (mob && z && this.state.open !== null) ? sorted[this.state.open] : null;
     if (!this._mobCover) this._mobCover = { p: Math.floor(Math.random() * PHOTOS.length), g: Math.floor(Math.random() * GEN.length) };
+    /* phone landing: the same fanned stack as the desktop, two columns side by side. The three prints
+       behind each cover are fixed picks, so the stack looks the same each visit; only the cover changes. */
+    const MOB_BACKS = { photo: [1, 12, 23], gen: [5, 20, 40] };
+    const MOB_FAN = [
+      { x: -7, y: 3, r: -7, t: .25 },
+      { x: 6.5, y: 3.4, r: 6.2, t: .45 },
+      { x: -3.2, y: 1.2, r: -3.6, t: .7 }
+    ];
     const mobWalls = !mob ? [] : [
-      { key: "photo", n: "01", line: "Photography", accent: "#9C6B44",
-        meta: `${PHOTOS.length} prints · 2026 · A4/A3 Giclée Fine Art Prints`, img: IMG(PHOTOS[this._mobCover.p][0], 760) },
-      { key: "gen", n: "02", line: "Abstract Art", accent: "#4F6357",
-        meta: `${GEN.length} prints · 2026 · A4/A3 Giclée Fine Art Prints`, img: IMG(GEN[this._mobCover.g][0], 760) }
+      { key: "photo", n: "01", line: "Photography", accent: "#9C6B44", list: PHOTOS, n_: PHOTOS.length, cover: this._mobCover.p },
+      { key: "gen", n: "02", line: "Abstract Art", accent: "#4F6357", list: GEN, n_: GEN.length, cover: this._mobCover.g }
     ].map(function (w) {
+      const pick = (k) => { let i = MOB_BACKS[w.key][k] % w.n_; if (i === w.cover) i = (i + 1) % w.n_; return i; };
+      const cast = (t) => (1 + .6 * t).toFixed(1) + "px " + (1 + t).toFixed(1) + "px " + (2 + 3 * t).toFixed(1) + "px rgba(14,14,14," + (.07 + .05 * t).toFixed(3) + "),"
+        + (3 + 6 * t).toFixed(1) + "px " + (8 + 14 * t).toFixed(1) + "px " + (16 + 22 * t).toFixed(1) + "px rgba(14,14,14," + (.09 + .08 * t).toFixed(3) + ")";
       return {
-        n: w.n, line: w.line, meta: w.meta, cta: "Enter the wall →",
-        wrapStyle: "display:flex;flex-direction:column;gap:15px;cursor:pointer;",
-        frameStyle: "width:100%;box-sizing:border-box;background:#FFFFFF;padding:0;"
-          + "box-shadow:1px 1px 2px rgba(14,14,14,.10),7px 20px 40px rgba(14,14,14,.15);",
-        imgStyle: 'width:100%;aspect-ratio:1/1.414;background:#FFFFFF url("' + w.img + '") no-repeat center/contain;',
+        n: w.n, line: w.line, meta: w.n_ + " prints · 2026", cta: "Enter the wall →",
+        wrapStyle: "display:flex;flex-direction:column;gap:12px;cursor:pointer;min-width:0;",
+        stackStyle: "position:relative;width:68%;margin:8px auto 4px;aspect-ratio:1/1.414;",
+        backs: MOB_FAN.map(function (f, k) {
+          return { style: "position:absolute;inset:0;background:#FFFFFF url(\"" + IMG(w.list[pick(k)][0], 380) + "\") no-repeat center/cover;"
+            + "box-shadow:" + cast(f.t) + ";transform:translate(" + f.x + "%," + f.y + "%) rotate(" + f.r + "deg);transform-origin:50% 100%;z-index:" + k + ";" };
+        }),
+        frameStyle: "position:absolute;inset:0;z-index:5;box-sizing:border-box;background:#FFFFFF;padding:0;"
+          + "box-shadow:" + cast(1) + ";",
+        imgStyle: 'width:100%;height:100%;background:#FFFFFF url("' + IMG(w.list[w.cover][0], 520) + '") no-repeat center/cover;',
         numStyle: "font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:" + w.accent + ";",
-        ctaStyle: "align-self:flex-start;margin-top:6px;min-height:44px;display:flex;align-items:center;padding:0 18px;"
-          + "background:#0E0E0E;color:#FFF;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;",
+        ctaStyle: "align-self:flex-start;min-height:44px;display:flex;align-items:center;padding:0;"
+          + "background:none;color:#0E0E0E;font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;",
         onClick: function () { self.stepTo(w.key); }
       };
     });
