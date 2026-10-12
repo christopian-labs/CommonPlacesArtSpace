@@ -323,6 +323,12 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
           <animate attributeName="scale" dur="14s" values="16;9.2;16" repeatCount="indefinite"></animate>
         </feDisplacementMap>
       </filter>
+      <linearGradient id="eb-clip-wood" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#C79A62"></stop><stop offset=".45" stop-color="#E2C08C"></stop><stop offset="1" stop-color="#B98A52"></stop>
+      </linearGradient>
+      <linearGradient id="eb-clip-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#E4E4DD"></stop><stop offset="1" stop-color="#9B9B93"></stop>
+      </linearGradient>
     </defs>
   </svg>
 
@@ -577,14 +583,12 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 
           <div data-eb-viewzone="1" ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;{{ z.scrollerHide }}">
             <div style="{{ z.trackStyle }}">
-              <div data-eb-base="{{ z.baseOver }}" style="{{ z.baselineStyle }}"></div>
+              <svg style="{{ z.stringStyle }}" aria-hidden="true">
+                <path d="{{ z.stringD }}" transform="translate(0 3)" fill="none" stroke="rgba(14,14,14,.10)" stroke-width="2.4" stroke-linecap="round"></path>
+                <path d="{{ z.stringD }}" fill="none" stroke="#8E8B82" stroke-width="1.5" stroke-linecap="round"></path>
+                <path d="{{ z.stringD }}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1" stroke-dasharray="1.6 2.2" stroke-linecap="round"></path>
+              </svg>
               <sc-for list="{{ z.items }}" as="it" hint-placeholder-count="11">
-                <div style="{{ it.hookStyle }}">
-                  <svg width="20" height="{{ it.hookH }}" viewBox="0 0 20 {{ it.hookH }}" style="display:block;overflow:visible;">
-                    <path d="{{ it.hookD }}" style="{{ it.wireStyle }}"></path>
-                  </svg>
-                </div>
-                <div style="{{ it.stemStyle }}"></div>
                 <div data-eb-lab="1" style="{{ it.labelStyle }}">
                   <div data-eb-cap1="1" style="{{ it.labelHeadStyle }}">
                     <span style="font:500 11.5px/1.25 Archivo,sans-serif;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.title }}</span>
@@ -608,6 +612,18 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                     <div style="{{ it.plateStyle }}" role="img" aria-label="{{ it.title }}"><div style="{{ it.plateRotStyle }}"></div></div>
                   </sc-if>
                 </div>
+                <sc-if value="{{ it.isClosed }}" hint-placeholder-val="{{ true }}">
+                  <svg viewBox="0 0 18 54" style="{{ it.clipStyle }}" aria-hidden="true">
+                    <ellipse cx="11.2" cy="30" rx="6" ry="21" fill="rgba(14,14,14,.16)"></ellipse>
+                    <path d="M3.2 3.4 Q9 .6 14.8 3.4 L14 21 L13.2 50.5 Q9 53.4 4.8 50.5 L4 21 Z" fill="url(#eb-clip-wood)" stroke="rgba(70,42,16,.55)" stroke-width=".7" stroke-linejoin="round"></path>
+                    <path d="M9 23.5 L9 50.4" stroke="rgba(70,42,16,.55)" stroke-width="1"></path>
+                    <path d="M6.2 6 L6.8 44 M11.8 6 L11.3 44" stroke="rgba(120,78,36,.35)" stroke-width=".55" fill="none"></path>
+                    <rect x="2.4" y="18" width="13.2" height="4.6" rx="1.8" fill="url(#eb-clip-metal)" stroke="rgba(30,30,28,.5)" stroke-width=".6"></rect>
+                    <path d="M3.8 20.3 h10.4" stroke="rgba(30,30,28,.45)" stroke-width=".7" stroke-dasharray="1.2 1"></path>
+                    <circle cx="9" cy="8" r="2.5" fill="rgba(40,24,8,.55)"></circle>
+                    <path d="M3 8 H15" stroke="#8E8B82" stroke-width="1.5" stroke-linecap="round" opacity=".0"></path>
+                  </svg>
+                </sc-if>
                 </div>
                 </div>
                 </div>
@@ -1365,6 +1381,11 @@ const D_HERO = 520;
 const D_PANEL = 360;
 /* how far the grid scrolls (px) before the controls are fully faded and the grid fills the screen */
 const GRID_FADE_PX = 140;
+/* the hang: prints are clothes-pegged to one string. CLIP_DROP is how far a print's top edge sits below
+   the string; CLIP_SAG is how much the string dips between two pegs, as a share of the gap. */
+const CLIP_DROP = 10;
+const CLIP_SAG = 0.034;
+const CAPTION_H = 44;
 const GRID_TOP_FADE = 120;  /* px of soft fade at the grid's top edge while it is scrolled */
 /* how far a print comes forward when hovered: scale added to 1, and px of lift */
 const HOVER_GROW = 0.14;
@@ -1983,10 +2004,10 @@ class Component extends DCLogic {
     const HOOK_CREST = 14, LAB_BAND = 39;
     const cardHz = Math.max(56, Math.round(railH * 0.44));
     const maxDropz = Math.round(railH * 0.11);
-    const blockH = HOOK_CREST + maxDropz + LAB_BAND + cardHz;
+    const blockH = HOOK_CREST + CLIP_DROP + CAPTION_H + cardHz;
     /* Wall and Grid share one content line: the wall sits higher than dead centre
        and the grid starts lower than the switch, meeting at the same height. */
-    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2) - Math.round(railH * 0.07));
+    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2) - Math.round(railH * 0.03));
     /* the rail head sits above the scroller, so the scroller's own middle is not
        the window's middle — half the head's height corrects for it. */
     const scEl = this.refs2[zone] && this.refs2[zone].current;
@@ -2037,7 +2058,7 @@ class Component extends DCLogic {
       const dropN = (STEMF[i % STEMF.length] - 0.13) / 0.15;
       const drop = Math.round(railH * (0.03 + dropN * 0.08));
       let cardH = cardHz;
-      let stem = drop + LAB_H + LAB_GAP;
+      let stem = CLIP_DROP;  /* the peg holds the print just under the string */
       let imgH = cardH;  /* no mat: the print's own border is the frame */
       const cardW = Math.round(imgH / AR);
       const top = baseline + stem;
@@ -2054,10 +2075,11 @@ class Component extends DCLogic {
       /* the hovered print steps down off the wall; its wire grows by the same distance so
          the print never hangs apart from its hook. */
       const stemHov = !isOpen && openIdx === null && this.state.hoverIdx === zone + ":" + i;
-      const stemStyle = `position:absolute;left:${stemX - 0.6}px;top:${top - 1}px;width:1.2px;height:${stemHov && HOVER_RISE > 0 ? HOVER_RISE + 2 : 0}px;background:rgba(14,14,14,.34);z-index:3;pointer-events:none;transition:height ${D_HERO}ms ${EASE};`;
+      const stemStyle = "display:none;";
       const hookH = 14 + stem;
-      const hookStyle = isOpen ? "display:none;"
-        : `position:absolute;left:${stemX - 11}px;top:${baseline - 14}px;width:20px;height:${hookH}px;z-index:3;pointer-events:none;`;
+      const hookStyle = "display:none;";
+      const clipTurn = ((i * 37) % 9 - 4) * 0.9;  /* each peg sits a degree or three off true */
+      const clipStyle = `position:absolute;left:50%;top:-${CLIP_DROP + 8}px;width:18px;height:54px;margin-left:-9px;overflow:visible;pointer-events:none;z-index:4;transform:rotate(${clipTurn.toFixed(2)}deg);transform-origin:50% 8px;`;
       const hookD = `M3 17 L3 11.5 C3 9 4 7 6.5 7 C9 7 11 9 11 13 L11 ${hookH}`;
       const wireStyle = `fill:none;stroke:rgba(14,14,14,.34);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:700;animation:eb-wire-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
       /* spatial depth: HF (the height factor already driving each card's rest
@@ -2119,13 +2141,13 @@ class Component extends DCLogic {
          and the paper inside it warps on an animated displacement mesh (the
          plate's own filter). Both are infinite, phase-offset per print, and
          neither is driven by scroll, hover or rail position. */
-      const swingStyle = `width:100%;height:100%;transform-origin:50% ${above ? "100%" : "0%"};`
+      const swingStyle = `width:100%;height:100%;transform-origin:50% -${CLIP_DROP}px;`
         + (isOpen ? "" : `animation:eb-swing ${swayDur}s ease-in-out ${swayDelay}s infinite;`);
       /* a third motion, and the only one the walk drives: the wall moves, the paper
          lags. Pivoted at the wire, not the frame's centre, so the piece really
          hangs off its hook. The engine owns this transform; nothing else writes it.
          Heavier prints take less of the angle. */
-      const tiltStyle = `width:100%;height:100%;transform-origin:${stemX - x}px 0px;will-change:transform;`;
+      const tiltStyle = `width:100%;height:100%;transform-origin:50% -${CLIP_DROP}px;will-change:transform;`;
       const tiltF = (0.82 + (i % 5) * 0.09).toFixed(2);
       const lineAnim = (d) => `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${d}ms both;`;
       items.push({
@@ -2143,13 +2165,13 @@ class Component extends DCLogic {
            the wire is in front of the wall, the label is painted on it, and the
            two must not cross. */
         labelStyle: isOpen ? "display:none;"
-          : `filter:none;opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
-        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
+          : `filter:none;opacity:${recede ? 0.4 : 1};transform:translateY(${lift ? Math.round(cardH * HOVER_GROW) : 0}px);transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE},transform ${D_PANEL}ms ${EASE};position:absolute;left:${x}px;top:${top + cardH + 12}px;width:${cardW}px;height:${CAPTION_H - 8}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
+        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW}px;overflow:hidden;`,
         plateStyle: `width:100%;height:100%;margin:0;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
         plateRotStyle: ROTATE_CW_TITLES.has(title)
           ? `position:absolute;top:50%;left:50%;width:${cardH}px;height:${cardW}px;transform:translate(-50%,-50%) rotate(90deg);background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`
           : `position:absolute;inset:0;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`,
-        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF,
+        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF, clipStyle,
         onEnterCard: isOpen ? undefined : () => this.setState({ hoverIdx: zone + ":" + i }),
         onLeaveCard: isOpen ? undefined : () => this.setState({ hoverIdx: null }),
         openPlateStyle: `width:${plateW}px;flex:none;height:100%;box-sizing:border-box;padding:18px;border-right:1px solid rgba(14,14,14,.12);background:#FFFFFF;display:flex;flex-direction:column;gap:13px;animation:eb-plate-in ${D_HERO}ms ${EASE} 80ms both;`,
@@ -2227,7 +2249,18 @@ class Component extends DCLogic {
         });
       }
     });
-    return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom };
+    /* the string: one line through every peg, dipping a little between them as a real line does,
+       tied off to a small nail at each end. Drawn once; it moves 1:1 with the prints. */
+    const sy = baseline;
+    const pegXs = items.map(it => Math.round(it.left + it.w / 2));
+    let stringD = `M -14 ${sy - 5}`, px = -14, py = sy - 5;
+    pegXs.concat([trackWidth + 14]).forEach((cx, k, arr) => {
+      const ty = k === arr.length - 1 ? sy - 5 : sy;
+      const dx = cx - px, sag = Math.min(16, dx * CLIP_SAG);
+      stringD += ` Q ${((px + cx) / 2).toFixed(1)} ${((py + ty) / 2 + sag * 2).toFixed(1)} ${cx} ${ty}`;
+      px = cx; py = ty;
+    });
+    return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom, stringD };
   }
 
   zoneModel(zone, meta) {
@@ -2439,7 +2472,9 @@ class Component extends DCLogic {
       priceStyle: `font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#FFF;background:${accent};padding:6px 10px;white-space:nowrap;`,
       trackStyle: laid ? `position:relative;height:100%;width:${laid.trackWidth}px;` : "position:relative;height:100%;width:100%;",
       baseOver: laid ? String(laid.baseOver) : "0",
-      baselineStyle: laid ? `position:absolute;left:${-laid.baseOver}px;width:${laid.trackWidth}px;top:${laid.baseline - 1}px;height:2px;background:linear-gradient(to bottom,rgba(14,14,14,.11),rgba(14,14,14,.30));box-shadow:0 1.5px 2.5px rgba(14,14,14,.09);will-change:transform;` : "display:none;",
+      stringD: laid ? laid.stringD : "",
+      stringStyle: laid ? `position:absolute;left:0;top:0;width:${laid.trackWidth}px;height:${laid.baseline + 40}px;overflow:visible;pointer-events:none;z-index:2;` : "display:none;",
+      baselineStyle: "display:none;",
       items: laid ? laid.items : [],
       hasOpen: !!(laid && openIdx !== null && laid.items[openIdx]),
       open: (laid && openIdx !== null && laid.items[openIdx]) || {},
