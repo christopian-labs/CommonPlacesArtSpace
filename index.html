@@ -2261,12 +2261,20 @@ class Component extends DCLogic {
        tied off to a small nail at each end. Drawn once; it moves 1:1 with the prints. */
     const sy = baseline;
     const pegXs = items.map(it => Math.round(it.left + it.w / 2));
-    let stringD = `M -14 ${sy - 5}`, px = -14, py = sy - 5;
-    pegXs.concat([trackWidth + 14]).forEach((cx, k, arr) => {
-      const ty = k === arr.length - 1 ? sy - 5 : sy;
+    /* past both ends the string carries on with the same spacing and dip, as if more prints hung there,
+       far enough out that no end ever shows, even when the wall is pulled past its edge or the room is wide */
+    const gapAvg = pegXs.length > 1 ? (pegXs[pegXs.length - 1] - pegXs[0]) / (pegXs.length - 1) : 400;
+    const reach = Math.max(railW, 900) + 500;
+    const extra = Math.ceil(reach / gapAvg) + 1;
+    const allX = [];
+    for (let k = extra; k >= 1; k--) allX.push(Math.round(pegXs[0] - k * gapAvg));
+    pegXs.forEach(x => allX.push(x));
+    for (let k = 1; k <= extra; k++) allX.push(Math.round(pegXs[pegXs.length - 1] + k * gapAvg));
+    let stringD = `M ${allX[0]} ${sy}`, px = allX[0];
+    allX.slice(1).forEach(cx => {
       const dx = cx - px, sag = Math.min(16, dx * CLIP_SAG);
-      stringD += ` Q ${((px + cx) / 2).toFixed(1)} ${((py + ty) / 2 + sag * 2).toFixed(1)} ${cx} ${ty}`;
-      px = cx; py = ty;
+      stringD += ` Q ${((px + cx) / 2).toFixed(1)} ${(sy + sag * 2).toFixed(1)} ${cx} ${sy}`;
+      px = cx;
     });
     return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom, stringD };
   }
