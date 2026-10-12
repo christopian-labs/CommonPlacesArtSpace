@@ -39,6 +39,11 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 [data-eb-card]:hover > div { box-shadow:none !important; }
 @keyframes eb-card-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
 @keyframes eb-card-fade { from { opacity:0; } to { opacity:1; } }
+/* entering the wall: the string comes down first, then each clipped print drops in from above the wall and
+   settles, fading in as it falls */
+@keyframes eb-string-in { from { opacity:0; transform:translateY(-240px); } 70% { opacity:1; } to { opacity:1; transform:none; } }
+@keyframes eb-drop-in { from { opacity:0; transform:translateY(-380px); } 45% { opacity:1; } 82% { transform:translateY(7px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { [data-eb-card], [data-eb-lab], [data-eb-string] { animation:none !important; } }
 /* switching Wall <-> Grid: the room being left eases out, the new one files in */
 @keyframes eb-grid-in { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
 [data-view-leaving] [data-eb-viewzone] { opacity:0 !important; transform:translateY(10px) !important; transition:opacity 180ms ease, transform 180ms ease !important; }
@@ -585,7 +590,7 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 
           <div data-eb-viewzone="1" ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;{{ z.scrollerHide }}">
             <div style="{{ z.trackStyle }}">
-              <svg style="{{ z.stringStyle }}" aria-hidden="true">
+              <svg data-eb-string="1" style="{{ z.stringStyle }}" aria-hidden="true">
                 <path d="{{ z.stringD }}" transform="translate(0 3)" fill="none" stroke="rgba(14,14,14,.10)" stroke-width="2.4" stroke-linecap="round"></path>
                 <path d="{{ z.stringD }}" fill="none" stroke="#8E8B82" stroke-width="1.5" stroke-linecap="round"></path>
                 <path d="{{ z.stringD }}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1" stroke-dasharray="1.6 2.2" stroke-linecap="round"></path>
@@ -1393,6 +1398,8 @@ const GRID_FADE_PX = 140;
 const CLIP_DROP = 18;
 const CLIP_SAG = 0.034;
 const CAPTION_H = 44;
+const DROP_BASE = 260;  /* ms before the first print starts to fall: the string lands first */
+const DROP_MS = 880;    /* ms for one print to fall and settle */
 const GRID_TOP_FADE = 120;  /* px of soft fade at the grid's top edge while it is scrolled */
 /* how far a print comes forward when hovered: scale added to 1, and px of lift */
 const HOVER_GROW = 0.14;
@@ -1845,7 +1852,7 @@ class Component extends DCLogic {
      replays it on every card. */
   settleSoon() {
     clearTimeout(this.settleT);
-    this.settleT = setTimeout(() => this.setState({ entered: true }), ST_CAP + ST_LINE + D_REVEAL + 250);
+    this.settleT = setTimeout(() => this.setState({ entered: true }), ST_CAP + DROP_BASE + DROP_MS + D_REVEAL + 250);
   }
 
   goIndex = () => this.setState({ zone: null, open: null });
@@ -2122,7 +2129,7 @@ class Component extends DCLogic {
            opacity only: the hook, the wire and the label are pinned to this box's
            authored `top`, so nothing may move it — a rise here would leave the
            print hanging 28px below its own wire. */
-        isOpen || recede || this.state.entered ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
+        isOpen || recede || this.state.entered ? "animation:none" : `animation:eb-drop-in ${DROP_MS}ms cubic-bezier(.22,.88,.3,1) ${DROP_BASE + stemDelay}ms both`
       ].join(";") + ";";
       const hoverOuterStyle = isOpen ? "" : "z-index:30;";
       const innerStyle = [
@@ -2173,7 +2180,7 @@ class Component extends DCLogic {
            the wire is in front of the wall, the label is painted on it, and the
            two must not cross. */
         labelStyle: isOpen ? "display:none;"
-          : `filter:none;opacity:${recede ? 0.4 : 1};transform:translateY(${lift ? Math.round(cardH * HOVER_GROW) : 0}px);transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE},transform ${D_PANEL}ms ${EASE};position:absolute;left:${x}px;top:${top + cardH + 12}px;width:${cardW}px;height:${CAPTION_H - 8}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
+          : `filter:none;opacity:${recede ? 0.4 : 1};transform:translateY(${lift ? Math.round(cardH * HOVER_GROW) : 0}px);transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE},transform ${D_PANEL}ms ${EASE};position:absolute;left:${x}px;top:${top + cardH + 12}px;width:${cardW}px;height:${CAPTION_H - 8}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${DROP_BASE + stemDelay + Math.round(DROP_MS * 0.6)}ms both;`}`,
         labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW}px;overflow:hidden;`,
         plateStyle: `width:100%;height:100%;margin:0;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
         plateRotStyle: ROTATE_CW_TITLES.has(title)
@@ -2489,7 +2496,7 @@ class Component extends DCLogic {
       trackStyle: laid ? `position:relative;height:100%;width:${laid.trackWidth}px;` : "position:relative;height:100%;width:100%;",
       baseOver: laid ? String(laid.baseOver) : "0",
       stringD: laid ? laid.stringD : "",
-      stringStyle: laid ? `position:absolute;left:0;top:0;width:${laid.trackWidth}px;height:${laid.baseline + 40}px;overflow:visible;pointer-events:none;z-index:2;` : "display:none;",
+      stringStyle: laid ? `position:absolute;left:0;top:0;width:${laid.trackWidth}px;height:${laid.baseline + 40}px;overflow:visible;pointer-events:none;z-index:2;${this.state.entered ? "" : `animation:eb-string-in 640ms ${EASE} 0ms both;`}` : "display:none;",
       baselineStyle: "display:none;",
       items: laid ? laid.items : [],
       hasOpen: !!(laid && openIdx !== null && laid.items[openIdx]),
