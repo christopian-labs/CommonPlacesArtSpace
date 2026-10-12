@@ -53,7 +53,9 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 /* the pendulum: the framed print rocks on its hook. Origin is the hook, not the
    centre, so the arc is a swing and not a spin. Seamless — first and last frame
    are the same pose. */
-@keyframes eb-swing { 0% { transform:rotate(-.8deg) translateX(-.6px); } 18% { transform:rotate(-.15deg) translateX(-.1px); } 38% { transform:rotate(.6deg) translateX(.45px); } 52% { transform:rotate(.8deg) translateX(.65px); } 70% { transform:rotate(.12deg) translateX(.1px); } 86% { transform:rotate(-.55deg) translateX(-.45px); } 100% { transform:rotate(-.8deg) translateX(-.6px); } }
+@keyframes eb-swing { 0% { transform:rotate(-1.3deg); } 18% { transform:rotate(-.25deg); } 38% { transform:rotate(1deg); } 52% { transform:rotate(1.3deg); } 70% { transform:rotate(.2deg); } 86% { transform:rotate(-.9deg); } 100% { transform:rotate(-1.3deg); } }
+/* the clip trails the print a fraction of a second behind: it turns on the string, the print follows it */
+@keyframes eb-clip-sway { 0% { transform:rotate(calc(var(--turn) - 1.1deg)); } 50% { transform:rotate(calc(var(--turn) + 1.1deg)); } 100% { transform:rotate(calc(var(--turn) - 1.1deg)); } }
 /* the index piles already own their transform (the fan), so their swing rides the
    independent `rotate` property and composes with it instead of replacing it. */
 /* arrival at the front door: the two piles come up from very small, out of focus,
@@ -323,11 +325,11 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
           <animate attributeName="scale" dur="14s" values="16;9.2;16" repeatCount="indefinite"></animate>
         </feDisplacementMap>
       </filter>
-      <linearGradient id="eb-clip-wood" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#C79A62"></stop><stop offset=".45" stop-color="#E2C08C"></stop><stop offset="1" stop-color="#B98A52"></stop>
+      <linearGradient id="eb-pin-wood" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#C99C64"></stop><stop offset=".3" stop-color="#E7C690"></stop><stop offset=".48" stop-color="#D5A96F"></stop><stop offset=".52" stop-color="#C69960"></stop><stop offset=".74" stop-color="#E0BC86"></stop><stop offset="1" stop-color="#B58650"></stop>
       </linearGradient>
-      <linearGradient id="eb-clip-metal" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#E4E4DD"></stop><stop offset="1" stop-color="#9B9B93"></stop>
+      <linearGradient id="eb-pin-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F0F0EA"></stop><stop offset=".5" stop-color="#B7B8B1"></stop><stop offset="1" stop-color="#8C8D86"></stop>
       </linearGradient>
     </defs>
   </svg>
@@ -614,14 +616,19 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                 </div>
                 <sc-if value="{{ it.isClosed }}" hint-placeholder-val="{{ true }}">
                   <svg viewBox="0 0 18 54" style="{{ it.clipStyle }}" aria-hidden="true">
-                    <ellipse cx="11.2" cy="30" rx="6" ry="21" fill="rgba(14,14,14,.16)"></ellipse>
-                    <path d="M3.2 3.4 Q9 .6 14.8 3.4 L14 21 L13.2 50.5 Q9 53.4 4.8 50.5 L4 21 Z" fill="url(#eb-clip-wood)" stroke="rgba(70,42,16,.55)" stroke-width=".7" stroke-linejoin="round"></path>
-                    <path d="M9 23.5 L9 50.4" stroke="rgba(70,42,16,.55)" stroke-width="1"></path>
-                    <path d="M6.2 6 L6.8 44 M11.8 6 L11.3 44" stroke="rgba(120,78,36,.35)" stroke-width=".55" fill="none"></path>
-                    <rect x="2.4" y="18" width="13.2" height="4.6" rx="1.8" fill="url(#eb-clip-metal)" stroke="rgba(30,30,28,.5)" stroke-width=".6"></rect>
-                    <path d="M3.8 20.3 h10.4" stroke="rgba(30,30,28,.45)" stroke-width=".7" stroke-dasharray="1.2 1"></path>
-                    <circle cx="9" cy="8" r="2.5" fill="rgba(40,24,8,.55)"></circle>
-                    <path d="M3 8 H15" stroke="#8E8B82" stroke-width="1.5" stroke-linecap="round" opacity=".0"></path>
+                    <ellipse cx="11.8" cy="33" rx="5.4" ry="19.5" fill="rgba(14,14,14,.15)"></ellipse>
+                    <path d="M3 5 C3 2.2 5.4 .8 9 .8 C12.6 .8 15 2.2 15 5 L14.6 28 L14.2 50.6 C13.8 52.8 11.6 53.6 10 52.6 L9.75 25 L9 22.6 L8.25 25 L8 52.6 C6.4 53.6 4.2 52.8 3.8 50.6 L3.4 28 Z" fill="url(#eb-pin-wood)" stroke="rgba(66,38,14,.62)" stroke-width=".6" stroke-linejoin="round"></path>
+                    <path d="M3.4 5.5 C3.6 3 5.8 1.5 9 1.5" fill="none" stroke="rgba(255,244,222,.65)" stroke-width=".7" stroke-linecap="round"></path>
+                    <path d="M9 24 L9 52" stroke="rgba(52,28,8,.7)" stroke-width=".9"></path>
+                    <path d="M5.6 6 C6 16 5.2 30 6 46 M7.2 8 C7.4 20 6.8 34 7.4 48 M11 7 C10.6 18 11.4 32 10.8 47 M12.7 9 C12.4 22 13 36 12.5 46" fill="none" stroke="rgba(120,76,32,.34)" stroke-width=".45" stroke-linecap="round"></path>
+                    <ellipse cx="12.3" cy="36" rx=".9" ry="1.6" fill="rgba(110,66,26,.4)"></ellipse>
+                    <path d="M3.6 29.5 L8 29.5 M10 29.5 L14.4 29.5" stroke="rgba(66,38,14,.3)" stroke-width=".5"></path>
+                    <path d="M3.2 21 C5 19.6 7 19.6 9 21 C11 19.6 13 19.6 14.8 21 L14.8 24.6 C13 26 11 26 9 24.6 C7 26 5 26 3.2 24.6 Z" fill="url(#eb-pin-metal)" stroke="rgba(30,30,28,.55)" stroke-width=".5"></path>
+                    <path d="M4.2 20.6 L4.2 25 M6.4 20.2 L6.4 25.3 M11.6 20.2 L11.6 25.3 M13.8 20.6 L13.8 25" stroke="rgba(30,30,28,.4)" stroke-width=".5"></path>
+                    <path d="M3.3 24.4 L3.6 38 M14.7 24.4 L14.4 38" fill="none" stroke="#9A9A93" stroke-width=".8" stroke-linecap="round"></path>
+                    <circle cx="9" cy="6" r="2.3" fill="rgba(36,20,6,.62)"></circle>
+                    <path d="M6.2 6 Q9 7.3 11.8 6" fill="none" stroke="#8E8B82" stroke-width="1.3" stroke-linecap="round"></path>
+                    <path d="M6.2 6 Q9 7.3 11.8 6" fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".8" stroke-dasharray="1 1.3"></path>
                   </svg>
                 </sc-if>
                 </div>
@@ -1383,7 +1390,7 @@ const D_PANEL = 360;
 const GRID_FADE_PX = 140;
 /* the hang: prints are clothes-pegged to one string. CLIP_DROP is how far a print's top edge sits below
    the string; CLIP_SAG is how much the string dips between two pegs, as a share of the gap. */
-const CLIP_DROP = 10;
+const CLIP_DROP = 18;
 const CLIP_SAG = 0.034;
 const CAPTION_H = 44;
 const GRID_TOP_FADE = 120;  /* px of soft fade at the grid's top edge while it is scrolled */
@@ -2078,8 +2085,9 @@ class Component extends DCLogic {
       const stemStyle = "display:none;";
       const hookH = 14 + stem;
       const hookStyle = "display:none;";
-      const clipTurn = ((i * 37) % 9 - 4) * 0.9;  /* each peg sits a degree or three off true */
-      const clipStyle = `position:absolute;left:50%;top:-${CLIP_DROP + 8}px;width:18px;height:54px;margin-left:-9px;overflow:visible;pointer-events:none;z-index:4;transform:rotate(${clipTurn.toFixed(2)}deg);transform-origin:50% 8px;`;
+      const clipTurn = ((i * 37) % 9 - 4) * 0.9;  /* each clip sits a degree or three off true */
+      const clipDur = (4.6 + (i % 5) * 0.62).toFixed(2), clipDelay = (-((i % 7) * 0.78) - 0.4).toFixed(2);
+      const clipStyle = `position:absolute;left:50%;top:-${CLIP_DROP + 6}px;width:13px;height:39px;margin-left:-6.5px;overflow:visible;pointer-events:none;z-index:4;--turn:${clipTurn.toFixed(2)}deg;transform:rotate(var(--turn));transform-origin:50% 6px;${isOpen ? "" : `animation:eb-clip-sway ${clipDur}s ease-in-out ${clipDelay}s infinite;`}`;
       const hookD = `M3 17 L3 11.5 C3 9 4 7 6.5 7 C9 7 11 9 11 13 L11 ${hookH}`;
       const wireStyle = `fill:none;stroke:rgba(14,14,14,.34);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:700;animation:eb-wire-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
       /* spatial depth: HF (the height factor already driving each card's rest
