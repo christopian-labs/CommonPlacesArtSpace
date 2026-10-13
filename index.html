@@ -39,8 +39,24 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 [data-eb-card]:hover > div { box-shadow:none !important; }
 @keyframes eb-card-in { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
 @keyframes eb-card-fade { from { opacity:0; } to { opacity:1; } }
+/* entering the wall: the string comes down first, then each clipped print drops in from above the wall and
+   settles, fading in as it falls */
+@keyframes eb-string-in { from { opacity:0; transform:translateY(-240px); } 70% { opacity:1; } to { opacity:1; transform:none; } }
+@keyframes eb-drop-in { from { opacity:0; transform:translateY(-380px); } 45% { opacity:1; } 82% { transform:translateY(7px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { [data-eb-card], [data-eb-lab], [data-eb-string] { animation:none !important; } }
 /* switching Wall <-> Grid: the room being left eases out, the new one files in */
 @keyframes eb-grid-in { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
+[data-seg="off"]:hover { background:rgba(14,14,14,.07) !important; color:#0E0E0E !important; }
+[data-sl]::before { content:""; position:absolute; left:7px; top:0; bottom:0; width:1px; background:rgba(14,14,14,.16); }
+[data-sl]:hover [data-slthumb], [data-sl][data-drag="1"] [data-slthumb] { width:5px; left:5px; }
+[data-slthumb] { transition:width 160ms ease, left 160ms ease; }
+[data-totop] { opacity:0; pointer-events:none; transform:translateY(12px); transition:opacity 260ms cubic-bezier(.16,.84,.32,1), transform 260ms cubic-bezier(.16,.84,.32,1), background 160ms ease; }
+[data-gridtop] [data-totop] { opacity:1; pointer-events:auto; transform:none; }
+[data-gridtop] [data-totop]:hover { background:#0E0E0E; }
+[data-gcard] [data-ghov] { opacity:0; transform:translateY(8px); transition:opacity 240ms cubic-bezier(.16,.84,.32,1), transform 240ms cubic-bezier(.16,.84,.32,1); }
+[data-gcard]:hover [data-ghov] { opacity:1; transform:none; }
+[data-seg="q-off"]:hover { color:#0E0E0E !important; border-bottom-color:rgba(14,14,14,.35) !important; }
+[data-seg="off"]:active { background:rgba(14,14,14,.12) !important; }
 [data-view-leaving] [data-eb-viewzone] { opacity:0 !important; transform:translateY(10px) !important; transition:opacity 180ms ease, transform 180ms ease !important; }
 @keyframes eb-stem-in { from { transform:scaleY(0); } to { transform:scaleY(1); } }
 @keyframes eb-wire-in { from { stroke-dashoffset:700; } to { stroke-dashoffset:0; } }
@@ -53,7 +69,9 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 /* the pendulum: the framed print rocks on its hook. Origin is the hook, not the
    centre, so the arc is a swing and not a spin. Seamless — first and last frame
    are the same pose. */
-@keyframes eb-swing { 0% { transform:rotate(-.8deg) translateX(-.6px); } 18% { transform:rotate(-.15deg) translateX(-.1px); } 38% { transform:rotate(.6deg) translateX(.45px); } 52% { transform:rotate(.8deg) translateX(.65px); } 70% { transform:rotate(.12deg) translateX(.1px); } 86% { transform:rotate(-.55deg) translateX(-.45px); } 100% { transform:rotate(-.8deg) translateX(-.6px); } }
+@keyframes eb-swing { 0% { transform:rotate(-1.3deg); } 18% { transform:rotate(-.25deg); } 38% { transform:rotate(1deg); } 52% { transform:rotate(1.3deg); } 70% { transform:rotate(.2deg); } 86% { transform:rotate(-.9deg); } 100% { transform:rotate(-1.3deg); } }
+/* the clip trails the print a fraction of a second behind: it turns on the string, the print follows it */
+@keyframes eb-clip-sway { 0% { transform:rotate(calc(var(--turn) - 1.1deg)); } 50% { transform:rotate(calc(var(--turn) + 1.1deg)); } 100% { transform:rotate(calc(var(--turn) - 1.1deg)); } }
 /* the index piles already own their transform (the fan), so their swing rides the
    independent `rotate` property and composes with it instead of replacing it. */
 /* arrival at the front door: the two piles come up from very small, out of focus,
@@ -323,6 +341,12 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
           <animate attributeName="scale" dur="14s" values="16;9.2;16" repeatCount="indefinite"></animate>
         </feDisplacementMap>
       </filter>
+      <linearGradient id="eb-pin-wood" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#C99C64"></stop><stop offset=".3" stop-color="#E7C690"></stop><stop offset=".48" stop-color="#D5A96F"></stop><stop offset=".52" stop-color="#C69960"></stop><stop offset=".74" stop-color="#E0BC86"></stop><stop offset="1" stop-color="#B58650"></stop>
+      </linearGradient>
+      <linearGradient id="eb-pin-metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F0F0EA"></stop><stop offset=".5" stop-color="#B7B8B1"></stop><stop offset="1" stop-color="#8C8D86"></stop>
+      </linearGradient>
     </defs>
   </svg>
 
@@ -395,12 +419,12 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
           <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:-8px;">
             <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
               <div style="{{ mobViewInd }}"></div>
-              <sc-for list="{{ mobViewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
+              <sc-for list="{{ mobViewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" data-seg="{{ b.state }}" style="{{ b.style }}"><i style="{{ b.iconStyle }}"></i>{{ b.label }}</span></sc-for>
             </div>
             <sc-if value="{{ mobIsGrid }}" hint-placeholder-val="{{ false }}">
               <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
                 <div style="{{ mobSortInd }}"></div>
-                <sc-for list="{{ mobSortBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
+                <sc-for list="{{ mobSortBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" data-seg="{{ b.state }}" style="{{ b.style }}"><i style="{{ b.iconStyle }}"></i>{{ b.label }}</span></sc-for>
               </div>
             </sc-if>
           </div>
@@ -563,20 +587,21 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
             <div style="height:34px;"></div>
             <div style="position:relative;display:flex;justify-content:center;align-items:center;height:34px;">
               <sc-if value="{{ z.isWall }}" hint-placeholder-val="{{ true }}">
-                <span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:10px;white-space:nowrap;pointer-events:none;font:400 10px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#4A4A46;text-transform:uppercase;">Drag · scroll</span>
+                <span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:8px;white-space:nowrap;pointer-events:none;font:400 8.5px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:#8E8B82;text-transform:uppercase;">Drag · scroll</span>
               </sc-if>
               <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
                 <div style="{{ z.viewInd }}"></div>
-                <sc-for list="{{ z.viewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
+                <sc-for list="{{ z.viewBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" data-seg="{{ b.state }}" style="{{ b.style }}"><i style="{{ b.iconStyle }}"></i>{{ b.label }}</span></sc-for>
               </div>
             </div>
             <div style="display:flex;justify-content:flex-end;align-items:center;min-width:0;height:34px;">
               <sc-if value="{{ z.isGrid }}" hint-placeholder-val="{{ false }}">
-                <div style="display:flex;align-items:center;gap:9px;">
-                  <span style="font:400 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:#6A6862;text-transform:uppercase;">Sort</span>
-                  <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:rgba(14,14,14,.07);border-radius:0;">
-                    <div style="{{ z.sortInd }}"></div>
-                    <sc-for list="{{ z.sortBtns }}" as="b" hint-placeholder-count="2"><span onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</span></sc-for>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span onClick="{{ z.onWheelReset }}" style="{{ z.wheelLabelStyle }}">{{ z.wheelLabel }}</span>
+                  <div style="{{ z.wheelBoxStyle }}">
+                    <div onMouseDown="{{ z.onWheelDown }}" title="Sort by colour" style="{{ z.wheelRingStyle }}"></div>
+                    <div style="{{ z.wheelMarkerStyle }}"></div>
+                    <div onClick="{{ z.onWheelReset }}" title="Back to date order" style="{{ z.wheelCentreStyle }}"></div>
                   </div>
                 </div>
               </sc-if>
@@ -585,21 +610,22 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 
           <div data-eb-viewzone="1" ref="{{ z.scrollerRef }}" onMouseDown="{{ onDragStart }}" onWheel="{{ onWheel }}" style="position:relative;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;{{ z.scrollerHide }}">
             <div style="{{ z.trackStyle }}">
-              <div data-eb-base="{{ z.baseOver }}" style="{{ z.baselineStyle }}"></div>
+              <svg data-eb-string="1" style="{{ z.stringStyle }}" aria-hidden="true">
+                <path d="{{ z.stringD }}" transform="translate(0 3)" fill="none" stroke="rgba(14,14,14,.10)" stroke-width="2.4" stroke-linecap="round"></path>
+                <path d="{{ z.stringD }}" fill="none" stroke="#8E8B82" stroke-width="1.5" stroke-linecap="round"></path>
+                <path d="{{ z.stringD }}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1" stroke-dasharray="1.6 2.2" stroke-linecap="round"></path>
+              </svg>
               <sc-for list="{{ z.items }}" as="it" hint-placeholder-count="11">
-                <div style="{{ it.hookStyle }}">
-                  <svg width="20" height="{{ it.hookH }}" viewBox="0 0 20 {{ it.hookH }}" style="display:block;overflow:visible;">
-                    <path d="{{ it.hookD }}" style="{{ it.wireStyle }}"></path>
-                  </svg>
-                </div>
-                <div style="{{ it.stemStyle }}"></div>
                 <div data-eb-lab="1" style="{{ it.labelStyle }}">
                   <div data-eb-cap1="1" style="{{ it.labelHeadStyle }}">
                     <span style="font:500 11.5px/1.25 Archivo,sans-serif;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.title }}</span>
                     <span style="flex:none;font:400 9.5px/1 'JetBrains Mono',monospace;color:#6A6862;">{{ it.idx }}</span>
                   </div>
                   <sc-if value="{{ it.isAbstract }}" hint-placeholder-val="{{ false }}">
-                    <div style="{{ it.swatchStyle }}"></div>
+                    <div style="display:flex;align-items:center;gap:9px;">
+                      <div style="{{ it.swatchStyle }}"></div>
+                      <span style="flex:none;font:400 8.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8E8B82;white-space:nowrap;">{{ it.dateLabel }}</span>
+                    </div>
                   </sc-if>
                   <sc-if value="{{ it.isPhotoCard }}" hint-placeholder-val="{{ true }}">
                     <div style="display:flex;align-items:baseline;gap:7px;white-space:nowrap;overflow:hidden;">
@@ -607,6 +633,7 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                       <span data-eb-cap3="1" style="flex:1;min-width:0;font:400 8.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#6A6862;overflow:hidden;text-overflow:ellipsis;">{{ it.capC }}</span>
                     </div>
                   </sc-if>
+                  <div style="{{ it.introStyle }}"><span style="{{ it.introBodyStyle }}">{{ it.intro }}</span></div>
                 </div>
                 <div onClick="{{ it.onClick }}" onMouseEnter="{{ it.onEnterCard }}" onMouseLeave="{{ it.onLeaveCard }}" data-eb-card="1" data-eb-open="{{ it.openFlag }}" style="{{ it.cardStyle }}">
                 <div style="{{ it.swingStyle }}">
@@ -616,6 +643,23 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                     <div style="{{ it.plateStyle }}" role="img" aria-label="{{ it.title }}"><div style="{{ it.plateRotStyle }}"></div></div>
                   </sc-if>
                 </div>
+                <sc-if value="{{ it.isClosed }}" hint-placeholder-val="{{ true }}">
+                  <svg viewBox="0 0 18 54" style="{{ it.clipStyle }}" aria-hidden="true">
+                    <ellipse cx="11.8" cy="33" rx="5.4" ry="19.5" fill="rgba(14,14,14,.15)"></ellipse>
+                    <path d="M3 5 C3 2.2 5.4 .8 9 .8 C12.6 .8 15 2.2 15 5 L14.6 28 L14.2 50.6 C13.8 52.8 11.6 53.6 10 52.6 L9.75 25 L9 22.6 L8.25 25 L8 52.6 C6.4 53.6 4.2 52.8 3.8 50.6 L3.4 28 Z" fill="url(#eb-pin-wood)" stroke="rgba(66,38,14,.62)" stroke-width=".6" stroke-linejoin="round"></path>
+                    <path d="M3.4 5.5 C3.6 3 5.8 1.5 9 1.5" fill="none" stroke="rgba(255,244,222,.65)" stroke-width=".7" stroke-linecap="round"></path>
+                    <path d="M9 24 L9 52" stroke="rgba(52,28,8,.7)" stroke-width=".9"></path>
+                    <path d="M5.6 6 C6 16 5.2 30 6 46 M7.2 8 C7.4 20 6.8 34 7.4 48 M11 7 C10.6 18 11.4 32 10.8 47 M12.7 9 C12.4 22 13 36 12.5 46" fill="none" stroke="rgba(120,76,32,.34)" stroke-width=".45" stroke-linecap="round"></path>
+                    <ellipse cx="12.3" cy="36" rx=".9" ry="1.6" fill="rgba(110,66,26,.4)"></ellipse>
+                    <path d="M3.6 29.5 L8 29.5 M10 29.5 L14.4 29.5" stroke="rgba(66,38,14,.3)" stroke-width=".5"></path>
+                    <path d="M3.2 21 C5 19.6 7 19.6 9 21 C11 19.6 13 19.6 14.8 21 L14.8 24.6 C13 26 11 26 9 24.6 C7 26 5 26 3.2 24.6 Z" fill="url(#eb-pin-metal)" stroke="rgba(30,30,28,.55)" stroke-width=".5"></path>
+                    <path d="M4.2 20.6 L4.2 25 M6.4 20.2 L6.4 25.3 M11.6 20.2 L11.6 25.3 M13.8 20.6 L13.8 25" stroke="rgba(30,30,28,.4)" stroke-width=".5"></path>
+                    <path d="M3.3 24.4 L3.6 38 M14.7 24.4 L14.4 38" fill="none" stroke="#9A9A93" stroke-width=".8" stroke-linecap="round"></path>
+                    <circle cx="9" cy="6" r="2.3" fill="rgba(36,20,6,.62)"></circle>
+                    <path d="M6.2 6 Q9 7.3 11.8 6" fill="none" stroke="#8E8B82" stroke-width="1.3" stroke-linecap="round"></path>
+                    <path d="M6.2 6 Q9 7.3 11.8 6" fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".8" stroke-dasharray="1 1.3"></path>
+                  </svg>
+                </sc-if>
                 </div>
                 </div>
                 </div>
@@ -625,12 +669,18 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
 
           <sc-if value="{{ z.isGrid }}" hint-placeholder-val="{{ false }}">
             <div data-eb-viewzone="1" data-eb-gridwrap="1" style="{{ z.gridWrapStyle }}">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:34px 28px;max-width:1480px;margin:0 auto;">
+              <div style="display:flex;align-items:flex-start;gap:30px;max-width:1480px;margin:0 auto;">
+              <sc-if value="{{ z.hasRail }}" hint-placeholder-val="{{ false }}">
+                <div data-sl="1" onMouseDown="{{ z.onScrollLineDown }}" aria-hidden="true" style="{{ z.scrollLineStyle }}"><div data-slthumb="1" style="position:absolute;left:6px;top:0;width:3px;height:40px;border-radius:2px;background:#0E0E0E;will-change:transform;"></div></div>
+              </sc-if>
+              <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:34px 28px;">
                 <sc-for list="{{ z.gridItems }}" as="g" hint-placeholder-count="12">
-                  <div style="{{ g.enterStyle }}">
-                  <div onClick="{{ g.onClick }}" style="display:flex;flex-direction:column;gap:9px;cursor:pointer;min-width:0;transition:transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="transform:translateY(-4px);">
+                  <div data-gt="{{ g.title }}" style="{{ g.enterStyle }}">
+                  <div data-gcard="1" onClick="{{ g.onClick }}" style="display:flex;flex-direction:column;gap:9px;cursor:pointer;min-width:0;transition:transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="transform:translateY(-4px);">
                     <div style="background:#FFFFFF;padding:0;box-shadow:1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.12);">
-                      <div style="width:100%;aspect-ratio:1/1.414;position:relative;overflow:hidden;background:#FFFFFF;" role="img" aria-label="{{ g.title }}"><div style="{{ g.imgRotStyle }}"></div></div>
+                      <div style="width:100%;aspect-ratio:1/1.414;position:relative;overflow:hidden;background:#FFFFFF;" role="img" aria-label="{{ g.title }}"><div style="{{ g.imgRotStyle }}"></div>
+                        <div data-ghov="1" style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:5px;padding:44px 10px 10px;background:linear-gradient(to top,rgba(14,14,14,.88),rgba(14,14,14,.80) 66%,rgba(14,14,14,0));pointer-events:none;"><span style="font:400 8.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.86);">{{ g.dateLabel }}</span><span style="font:400 10.5px/1.4 Archivo,sans-serif;color:#FFFFFF;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;">{{ g.intro }}</span></div>
+                      </div>
                     </div>
                     <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
                       <span style="flex:1;min-width:0;font:500 11.5px/1.25 Archivo,sans-serif;letter-spacing:-.005em;color:#0E0E0E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ g.title }}</span>
@@ -641,41 +691,37 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                   </div>
                 </sc-for>
               </div>
+              </div>
             </div>
+            <button type="button" data-totop="1" onClick="{{ z.onToTop }}" aria-label="Back to top" style="position:absolute;right:30px;bottom:30px;z-index:6;display:flex;align-items:center;gap:8px;height:36px;padding:0 16px;border:0;border-radius:0;cursor:pointer;background:#3A3935;color:#FFFFFF;box-shadow:0 1px 3px rgba(14,14,14,.2),0 8px 22px rgba(14,14,14,.18);font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;"><span style="font-size:12px;line-height:1;">↑</span>Top</button>
           </sc-if>
 
           <sc-if value="{{ z.hasOpen }}" hint-placeholder-val="{{ false }}">
-                    <div onClick="{{ closePiece }}" style="position:fixed;inset:0;z-index:80;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(245,248,239,.38);animation:eb-card-fade 300ms cubic-bezier(.16,.84,.32,1) both;cursor:zoom-out;"></div>
                     <div style="{{ z.openPanelStyle }}">
-                    <div style="display:flex;width:100%;height:100%;">
-                      <div style="{{ z.open.openPlateStyle }}">
-                        <div style="flex:1;min-height:0;display:flex;gap:10px;">
-                          <sc-if value="{{ z.open.isAbstract }}" hint-placeholder-val="{{ false }}">
-                            <div style="flex:none;width:56px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
-                              <sc-for list="{{ z.open.plateThumbs }}" as="th" hint-placeholder-count="6">
-                                <div onClick="{{ th.onClick }}" style="{{ th.style }}"></div>
-                              </sc-for>
-                            </div>
-                          </sc-if>
-                          <div style="{{ z.open.openImgStyle }}cursor:zoom-in;" onClick="{{ z.open.onToggleLightbox }}" role="img" aria-label="{{ z.open.title }}">
-                            <div style="{{ z.open.openImgRotStyle }}"></div>
-                          </div>
+                      <div style="{{ z.open.stageStyle }}">
+                        <div onClick="{{ closePiece }}" style="position:absolute;inset:0;cursor:zoom-out;"></div>
+                        <div style="{{ z.open.sheetStyle }}" onClick="{{ z.open.onToggleLightbox }}" role="img" aria-label="{{ z.open.title }}">
+                          <div style="{{ z.open.sheetImgStyle }}"></div>
                         </div>
-                        <div style="{{ z.open.metaBoxStyle }}">
-                          <sc-for list="{{ z.open.metaRows }}" as="m" hint-placeholder-count="3">
-                            <div style="display:flex;gap:12px;font:400 10.5px/1.5 'JetBrains Mono',monospace;color:#3A3A36;"><span style="width:104px;flex:none;white-space:nowrap;color:#6A6862;">{{ m.label }}</span><span style="min-width:0;">{{ m.value }}</span></div>
+                        <div style="{{ z.open.thumbRowStyle }}">
+                          <sc-for list="{{ z.open.plateThumbs }}" as="th" hint-placeholder-count="6">
+                            <div onClick="{{ th.onClick }}" style="{{ th.style }}"></div>
                           </sc-for>
                         </div>
                       </div>
-                      <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:24px 22px 0;overflow:hidden;">
+                      <div style="{{ z.open.textColStyle }}">
                         <div style="{{ z.open.lineStyle1 }}">
                           <span style="{{ z.eyebrowStyle }}">{{ z.open.idx }} / {{ z.total }} — {{ z.open.year }}</span>
                           <div style="display:flex;align-items:center;gap:8px;">
-                          <span title="Expand" aria-label="Expand" onClick="{{ z.open.onToggleBig }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">{{ z.open.bigIcon }}</span>
-                          <span title="Close" aria-label="Close" onClick="{{ closePiece }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;box-shadow:0 1px 1px rgba(14,14,14,.06),0 3px 9px rgba(14,14,14,.09);transition:border-color 280ms cubic-bezier(.16,.84,.32,1),box-shadow 280ms cubic-bezier(.16,.84,.32,1),color 280ms cubic-bezier(.16,.84,.32,1),transform 280ms cubic-bezier(.16,.84,.32,1);" style-hover="color:#0E0E0E;border-color:rgba(14,14,14,.16);box-shadow:0 2px 3px rgba(14,14,14,.08),0 8px 22px rgba(14,14,14,.14);transform:translateY(-1px);" style-active="transform:translateY(0);box-shadow:0 1px 1px rgba(14,14,14,.10);">✕</span>
+                          <span title="Close" aria-label="Close" onClick="{{ closePiece }}" style="cursor:pointer;font:500 13px/1 'JetBrains Mono',monospace;color:#3A3A36;border:1px solid rgba(14,14,14,.10);border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;">✕</span>
                           </div>
                         </div>
                         <h3 style="{{ z.open.titleStyle }}">{{ z.open.title }}</h3>
+                        <div style="flex:none;display:flex;flex-wrap:wrap;gap:4px 22px;padding:0 0 4px;">
+                          <sc-for list="{{ z.open.metaRows }}" as="m" hint-placeholder-count="2">
+                            <div style="display:flex;gap:8px;font:400 10.5px/1.5 'JetBrains Mono',monospace;color:#3A3A36;"><span style="color:#6A6862;white-space:nowrap;">{{ m.label }}</span><span style="min-width:0;">{{ m.value }}</span></div>
+                          </sc-for>
+                        </div>
                         <div data-eb-body="1" style="{{ z.open.bodyStyle }}">
                           <sc-if value="{{ z.open.hasBody1 }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#232320;">{{ z.open.body1 }}</p></sc-if>
                           <sc-if value="{{ z.open.hasBody2 }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font:400 14px/1.6 Archivo,sans-serif;color:#4A4A46;">{{ z.open.body2 }}</p></sc-if>
@@ -714,7 +760,6 @@ html[data-mobbar-hidden] [data-eb-mobbar] { transform:translateY(-100%); }
                           </div>
                         </div>
                       </div>
-                    </div>
                     </div>
           </sc-if>
 
@@ -887,6 +932,14 @@ const hexHsl = (hex) => {
   }
   return { h, s, l };
 };
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/* capture date of a photograph as { y, m, d }, or null when the piece has no date (the abstract work) */
+const shootDate = (title) => {
+  const s = SHOOT_INFO[title];
+  const m = s && String(s[1]).match(/(\d+)\s+(\w{3})\w*\s+(\d{4})/);
+  return m ? { d: +m[1], m: MON.indexOf(m[2]), y: +m[3] } : null;
+};
+const shootTs = (title) => { const s = shootDate(title); return s ? s.y * 10000 + s.m * 100 + s.d : 0; };
 const colourKey = (sw) => {
   const hs = (String(sw).match(/#[0-9a-fA-F]{6}/g) || []).map(hexHsl);
   const c = hs.find((x) => x.s > .22 && x.l > .12 && x.l < .9);
@@ -1374,6 +1427,17 @@ const D_HERO = 520;
 const D_PANEL = 360;
 /* how far the grid scrolls (px) before the controls are fully faded and the grid fills the screen */
 const GRID_FADE_PX = 140;
+/* the hang: prints are clothes-pegged to one string. CLIP_DROP is how far a print's top edge sits below
+   the string; CLIP_SAG is how much the string dips between two pegs, as a share of the gap. */
+const CLIP_DROP = 18;
+const CLIP_SAG = 0.034;
+const CAPTION_H = 44;
+/* the detail view: the print travels to the left of the screen over DETAIL_MS */
+const DETAIL_MS = 720;
+const DROP_BASE = 40;   /* ms before the string and the first print start to fall: together */
+const DROP_STAGGER = 18;  /* ms between neighbouring prints, capped at DROP_STAGGER_MAX */
+const DROP_STAGGER_MAX = 170;
+const DROP_MS = 820;    /* ms for the string and each print to fall and settle */
 const GRID_TOP_FADE = 120;  /* px of soft fade at the grid's top edge while it is scrolled */
 /* how far a print comes forward when hovered: scale added to 1, and px of lift */
 const HOVER_GROW = 0.14;
@@ -1383,7 +1447,7 @@ const ST_CAP = 480;
 const ST_LINE = 90;
 
 class Component extends DCLogic {
-  state = { makeOpen: false, entered: false, detailSel: null, hoverIdx: null, mob: typeof window !== "undefined" && window.innerWidth < 760, zone: null, open: null, railW: 0, railH: 0, hover: null, roomW: 0, roomH: 0, capH: 0, bandH: 0, pre: 0, preGone: false, step: 0, wipe: false, time: "" };
+  state = { hue: null, hueLive: null, rearr: null, makeOpen: false, entered: false, detailSel: null, hoverIdx: null, mob: typeof window !== "undefined" && window.innerWidth < 760, zone: null, open: null, railW: 0, railH: 0, hover: null, roomW: 0, roomH: 0, capH: 0, bandH: 0, pre: 0, preGone: false, step: 0, wipe: false, time: "" };
 
   constructor(props) {
     super(props);
@@ -1541,6 +1605,8 @@ class Component extends DCLogic {
       return;
     }
     if (!t || !t.hasAttribute || !t.hasAttribute("data-eb-gridwrap")) return;
+    this.syncRail(t);
+    if (t.scrollTop > 420) root.setAttribute("data-gridtop", "1"); else root.removeAttribute("data-gridtop");
     const p = Math.min(1, Math.max(0, t.scrollTop / GRID_FADE_PX));
     root.style.setProperty("--gp", p.toFixed(3));
     if (p > 0) root.setAttribute("data-gridfx", "1"); else root.removeAttribute("data-gridfx");
@@ -1551,6 +1617,7 @@ class Component extends DCLogic {
     if (root.style.getPropertyValue("--gp")) root.style.removeProperty("--gp");
     root.removeAttribute("data-grid-faded");
     root.removeAttribute("data-gridfx");
+    root.removeAttribute("data-gridtop");
     if (!this.state.mob) root.removeAttribute("data-mobbar-hidden");
   }
 
@@ -1567,6 +1634,8 @@ class Component extends DCLogic {
     this.measureRoom();
     this.measureCaps();
     this.measureBand();
+    if (this.viewPref() === "grid" && !this.state.mob) this.syncRail(document.querySelector("[data-eb-gridwrap]"));
+    if (this._flipFrom) { const from = this._flipFrom; this._flipFrom = null; this.playFlip(from); }
   }
 
   componentWillUnmount() {
@@ -1826,7 +1895,7 @@ class Component extends DCLogic {
      replays it on every card. */
   settleSoon() {
     clearTimeout(this.settleT);
-    this.settleT = setTimeout(() => this.setState({ entered: true }), ST_CAP + ST_LINE + D_REVEAL + 250);
+    this.settleT = setTimeout(() => this.setState({ entered: true }), DROP_BASE + DROP_STAGGER_MAX + DROP_MS + D_REVEAL + 140);
   }
 
   goIndex = () => this.setState({ zone: null, open: null });
@@ -1857,7 +1926,7 @@ class Component extends DCLogic {
     clearTimeout(this.lbCloseT);
     this.setState({ openPhase: 0, panelBig: false, lightboxOpen: false, lightboxPhase: 0 });
     clearTimeout(this.closeT);
-    this.closeT = setTimeout(() => this.setState({ open: null }), D_PANEL);
+    this.closeT = setTimeout(() => this.setState({ open: null }), DETAIL_MS);
   };
 
   /* one tweened glide for every programmatic move — prev/next, open, close.
@@ -1912,7 +1981,7 @@ class Component extends DCLogic {
       root.setAttribute("data-view-leaving", "1");
       clearTimeout(this.viewT);
       this.viewT = setTimeout(() => {
-        this.setState(v === "wall" ? { view: v, entered: false } : { view: v }, () => {
+        this.setState(v === "wall" ? { view: v, entered: false, rearr: null } : { view: v, rearr: null }, () => {
           requestAnimationFrame(() => root.removeAttribute("data-view-leaving"));
         });
         if (v === "wall") this.settleSoon();
@@ -1921,23 +1990,92 @@ class Component extends DCLogic {
     }
     this.setState({ [k]: v });
   }
-  segBtns(k, opts, cur, mob) {
+  segBtns(k, opts, cur, mob, quiet) {
+    /* tiny mask icons, drawn in the text colour: a string with two prints, and a 2×2 grid */
+    const ICONS = {
+      wall: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 12'><path d='M0 2.2 Q7 4.6 14 2.2' fill='none' stroke='black' stroke-width='1.1'/><rect x='1.6' y='4.6' width='4.4' height='6.6' fill='black'/><rect x='8' y='4.6' width='4.4' height='6.6' fill='black'/></svg>",
+      date: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><rect x='0.8' y='1.8' width='10.4' height='9.4' fill='none' stroke='black' stroke-width='1.2'/><rect x='0.8' y='1.8' width='10.4' height='2.8' fill='black'/><rect x='2.8' y='0' width='1.2' height='3' fill='black'/><rect x='8' y='0' width='1.2' height='3' fill='black'/></svg>",
+      colour: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><circle cx='6' cy='6' r='5.2' fill='none' stroke='black' stroke-width='1.2'/><path d='M6 0.8 A5.2 5.2 0 0 1 6 11.2 Z' fill='black'/></svg>",
+      grid: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><rect x='0.5' y='0.5' width='4.8' height='4.8' fill='black'/><rect x='6.7' y='0.5' width='4.8' height='4.8' fill='black'/><rect x='0.5' y='6.7' width='4.8' height='4.8' fill='black'/><rect x='6.7' y='6.7' width='4.8' height='4.8' fill='black'/></svg>"
+    };
     return opts.map(([v, label]) => {
       const on = v === cur;
+      const svg = ICONS[v] || null;
+      if (quiet) return {
+        label,
+        state: on ? "q-on" : "q-off",
+        iconStyle: "display:none;",
+        onClick: () => this.setPref(k, v),
+        style: `cursor:pointer;display:flex;align-items:center;white-space:nowrap;height:22px;padding:0 8px;box-sizing:border-box;font:${on ? 500 : 400} 9px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:${on ? "#0E0E0E" : "#8E8B82"};border-bottom:1px solid ${on ? "#0E0E0E" : "transparent"};transition:color ${D_MICRO}ms ${EASE},border-color ${D_MICRO}ms ${EASE};`
+      };
+      const url = svg ? `url("data:image/svg+xml,${encodeURIComponent(svg)}")` : "";
       return {
         label,
+        state: on ? "on" : "off",
+        iconStyle: svg ? `display:block;flex:none;width:12px;height:11px;margin-right:8px;background:currentColor;-webkit-mask:${url} center/contain no-repeat;mask:${url} center/contain no-repeat;` : "display:none;",
         onClick: () => this.setPref(k, v),
-        style: `position:relative;z-index:1;cursor:pointer;display:flex;align-items:center;justify-content:center;white-space:nowrap;${mob ? "min-height:36px;padding:0 22px;" : "height:26px;padding:0 20px;"}font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;background:transparent;color:${on ? "#FFFFFF" : "#4A4A46"};transition:color ${D_PANEL}ms ${EASE};`
+        style: `position:relative;z-index:1;cursor:pointer;display:flex;align-items:center;justify-content:center;white-space:nowrap;${mob ? "min-height:36px;padding:0 20px;" : "height:26px;padding:0 18px;"}font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;background:transparent;color:${on ? "#FFFFFF" : "#4A4A46"};transition:color ${D_PANEL}ms ${EASE},background ${D_MICRO}ms ${EASE};`
       };
     });
   }
   /* the dark block that slides under the selected option */
   segInd(idx) {
-    return `position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / 2);background:#0E0E0E;transform:translateX(${idx * 100}%);transition:transform ${D_PANEL}ms ${EASE};pointer-events:none;`;
+    return `position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / 2);background:#3A3935;box-shadow:0 1px 3px rgba(14,14,14,.18);transform:translateX(${idx * 100}%);transition:transform ${D_PANEL}ms ${EASE};pointer-events:none;`;
   }
-  gridOrder(items) {
+  gridOrder(items, chrono) {
     const rows = items.map((it, i) => ({ it, i }));
-    return this.sortPref() === "colour" ? rows.slice().sort((a, b) => colourKey(a.it.swatch) - colourKey(b.it.swatch)) : rows;
+    const hue = this.state.hue;
+    /* desktop: the colour wheel decides, nearest hue first, greys last. phone: the Date / Colour switch. */
+    if (!this.state.mob && hue != null) {
+      const dist = (sw) => { const k = colourKey(sw); if (k >= 400) return 1000 + k; const d = Math.abs(k - hue); return Math.min(d, 360 - d); };
+      return rows.slice().sort((a, b) => dist(a.it.swatch) - dist(b.it.swatch));
+    }
+    if (this.state.mob && this.sortPref() === "colour") return rows.slice().sort((a, b) => colourKey(a.it.swatch) - colourKey(b.it.swatch));
+    /* photographs run newest first by capture date, so the timeline reads true */
+    return chrono ? rows.slice().sort((a, b) => shootTs(b.it.title) - shootTs(a.it.title)) : rows;
+  }
+  /* re-sorting the grid: remember where every print is, jump to the top, and let componentDidUpdate glide each one to its new place */
+  rearrange(hue, zone) {
+    const wrap = document.querySelector("[data-eb-gridwrap]");
+    if (wrap) {
+      const from = {};
+      wrap.querySelectorAll("[data-gt]").forEach(el => { const r = el.getBoundingClientRect(); from[el.getAttribute("data-gt")] = { x: r.left, y: r.top }; });
+      this._flipFrom = from;
+      wrap.scrollTop = 0;
+      this.onRoomScroll({ target: wrap });
+    }
+    this.setState({ hue, hueLive: hue, rearr: zone });
+  }
+  playFlip(from) {
+    const wrap = document.querySelector("[data-eb-gridwrap]");
+    if (!wrap || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+    const vh = window.innerHeight; let n = 0;
+    wrap.querySelectorAll("[data-gt]").forEach(el => {
+      const o = from[el.getAttribute("data-gt")]; if (!o || !el.animate) return;
+      const r = el.getBoundingClientRect();
+      let dx = o.x - r.left, dy = o.y - r.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      /* prints that were, or end up, below the fold: those going out slide away fading, those coming in rise from below fading up */
+      const wasOff = o.y > vh, goesOff = r.top > vh;
+      if (wasOff && goesOff) return;
+      const coming = wasOff;
+      if (coming && Math.abs(dy) > vh * 0.8) dy = Math.sign(dy) * vh * 0.8;
+      const i = n++;
+      el.animate([{ transform: `translate(${dx}px,${dy}px)`, opacity: coming ? 0 : 1 }, { transform: "none", opacity: goesOff ? 0 : 1 }],
+        { duration: 680, delay: Math.min(i * 9, 260), easing: "cubic-bezier(.22,.8,.2,1)", fill: "backwards" });
+    });
+  }
+  /* the scroll line beside the grid: a thin track with a marker that follows (and can drag) the scroll */
+  syncRail(wrap) {
+    if (!wrap) return;
+    const sl = wrap.querySelector("[data-sl]"); if (!sl) return;
+    const thumb = sl.firstElementChild; if (!thumb) return;
+    const trackH = sl.clientHeight, max = wrap.scrollHeight - wrap.clientHeight;
+    const h = Math.max(28, Math.min(trackH, trackH * wrap.clientHeight / Math.max(1, wrap.scrollHeight)));
+    const f = max > 0 ? Math.min(1, Math.max(0, wrap.scrollTop / max)) : 0;
+    thumb.style.height = h.toFixed(1) + "px";
+    thumb.style.transform = `translateY(${(f * (trackH - h)).toFixed(1)}px)`;
+    sl.style.opacity = max > 8 ? "" : "0";
   }
   plateImg(it) {
     return ROTATE_CW_TITLES.has(it.title)
@@ -1954,7 +2092,18 @@ class Component extends DCLogic {
     const el = this.refs2[zone] && this.refs2[zone].current;
     cancelAnimationFrame(this.momRaf);
     cancelAnimationFrame(this.glideRaf);
-    this.setState({ open: i, openScroll: el ? el.scrollLeft : 0, openPhase: 0 }, () => {
+    /* where the print is right now: its hook on the wall, or its card in the grid */
+    let plateEl = null;
+    if (this.viewPref() === "grid") {
+      const title = (zone === "photo" ? PHOTOS : GEN)[i][1];
+      plateEl = [].slice.call(document.querySelectorAll("[data-eb-gridwrap] [role=img]")).find(n => n.getAttribute("aria-label") === title) || null;
+    } else {
+      const cardEl = el && el.querySelectorAll("[data-eb-card]")[i];
+      plateEl = cardEl && cardEl.querySelector("[role=img]");
+    }
+    const rr = plateEl ? plateEl.getBoundingClientRect() : null;
+    const openRect = rr && rr.width > 8 ? { x: rr.left, y: rr.top, w: rr.width, h: rr.height } : null;
+    this.setState({ open: i, openOrigin: i, openRect, openScroll: el ? el.scrollLeft : 0, openPhase: 0 }, () => {
       requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ openPhase: 1 })));
     });
   }
@@ -1992,10 +2141,10 @@ class Component extends DCLogic {
     const HOOK_CREST = 14, LAB_BAND = 39;
     const cardHz = Math.max(56, Math.round(railH * 0.44));
     const maxDropz = Math.round(railH * 0.11);
-    const blockH = HOOK_CREST + maxDropz + LAB_BAND + cardHz;
+    const blockH = HOOK_CREST + CLIP_DROP + CAPTION_H + cardHz;
     /* Wall and Grid share one content line: the wall sits higher than dead centre
        and the grid starts lower than the switch, meeting at the same height. */
-    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2) - Math.round(railH * 0.07));
+    const baseline = HOOK_CREST + Math.max(8, Math.round((railH - blockH) / 2) - Math.round(railH * 0.03));
     /* the rail head sits above the scroller, so the scroller's own middle is not
        the window's middle — half the head's height corrects for it. */
     const scEl = this.refs2[zone] && this.refs2[zone].current;
@@ -2046,7 +2195,7 @@ class Component extends DCLogic {
       const dropN = (STEMF[i % STEMF.length] - 0.13) / 0.15;
       const drop = Math.round(railH * (0.03 + dropN * 0.08));
       let cardH = cardHz;
-      let stem = drop + LAB_H + LAB_GAP;
+      let stem = CLIP_DROP;  /* the peg holds the print just under the string */
       let imgH = cardH;  /* no mat: the print's own border is the frame */
       const cardW = Math.round(imgH / AR);
       const top = baseline + stem;
@@ -2063,10 +2212,12 @@ class Component extends DCLogic {
       /* the hovered print steps down off the wall; its wire grows by the same distance so
          the print never hangs apart from its hook. */
       const stemHov = !isOpen && openIdx === null && this.state.hoverIdx === zone + ":" + i;
-      const stemStyle = `position:absolute;left:${stemX - 0.6}px;top:${top - 1}px;width:1.2px;height:${stemHov && HOVER_RISE > 0 ? HOVER_RISE + 2 : 0}px;background:rgba(14,14,14,.34);z-index:3;pointer-events:none;transition:height ${D_HERO}ms ${EASE};`;
+      const stemStyle = "display:none;";
       const hookH = 14 + stem;
-      const hookStyle = isOpen ? "display:none;"
-        : `position:absolute;left:${stemX - 11}px;top:${baseline - 14}px;width:20px;height:${hookH}px;z-index:3;pointer-events:none;`;
+      const hookStyle = "display:none;";
+      const clipTurn = ((i * 37) % 9 - 4) * 0.9;  /* each clip sits a degree or three off true */
+      const clipDur = (4.6 + (i % 5) * 0.62).toFixed(2), clipDelay = (-((i % 7) * 0.78) - 0.4).toFixed(2);
+      const clipStyle = `position:absolute;left:50%;top:-${CLIP_DROP + 6}px;width:13px;height:39px;margin-left:-6.5px;overflow:visible;pointer-events:none;z-index:4;--turn:${clipTurn.toFixed(2)}deg;transform:rotate(var(--turn));transform-origin:50% 6px;${isOpen ? "" : `animation:eb-clip-sway ${clipDur}s ease-in-out ${clipDelay}s infinite;`}`;
       const hookD = `M3 17 L3 11.5 C3 9 4 7 6.5 7 C9 7 11 9 11 13 L11 ${hookH}`;
       const wireStyle = `fill:none;stroke:rgba(14,14,14,.34);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:700;animation:eb-wire-in ${D_REVEAL}ms ${EASE} ${stemDelay}ms both;`;
       /* spatial depth: HF (the height factor already driving each card's rest
@@ -2101,7 +2252,7 @@ class Component extends DCLogic {
            opacity only: the hook, the wire and the label are pinned to this box's
            authored `top`, so nothing may move it — a rise here would leave the
            print hanging 28px below its own wire. */
-        isOpen || recede || this.state.entered ? "animation:none" : `animation:eb-card-fade ${D_REVEAL}ms ${EASE} ${stemDelay}ms both`
+        isOpen || recede || this.state.entered ? "animation:none" : `animation:eb-drop-in ${DROP_MS}ms cubic-bezier(.22,.88,.3,1) ${DROP_BASE + Math.min(DROP_STAGGER_MAX, i * DROP_STAGGER)}ms both`
       ].join(";") + ";";
       const hoverOuterStyle = isOpen ? "" : "z-index:30;";
       const innerStyle = [
@@ -2128,13 +2279,13 @@ class Component extends DCLogic {
          and the paper inside it warps on an animated displacement mesh (the
          plate's own filter). Both are infinite, phase-offset per print, and
          neither is driven by scroll, hover or rail position. */
-      const swingStyle = `width:100%;height:100%;transform-origin:50% ${above ? "100%" : "0%"};`
+      const swingStyle = `width:100%;height:100%;transform-origin:50% -${CLIP_DROP}px;`
         + (isOpen ? "" : `animation:eb-swing ${swayDur}s ease-in-out ${swayDelay}s infinite;`);
       /* a third motion, and the only one the walk drives: the wall moves, the paper
          lags. Pivoted at the wire, not the frame's centre, so the piece really
          hangs off its hook. The engine owns this transform; nothing else writes it.
          Heavier prints take less of the angle. */
-      const tiltStyle = `width:100%;height:100%;transform-origin:${stemX - x}px 0px;will-change:transform;`;
+      const tiltStyle = `width:100%;height:100%;transform-origin:50% -${CLIP_DROP}px;will-change:transform;`;
       const tiltF = (0.82 + (i % 5) * 0.09).toFixed(2);
       const lineAnim = (d) => `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${d}ms both;`;
       items.push({
@@ -2152,13 +2303,19 @@ class Component extends DCLogic {
            the wire is in front of the wall, the label is painted on it, and the
            two must not cross. */
         labelStyle: isOpen ? "display:none;"
-          : `filter:none;opacity:${recede ? 0.4 : 1};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};position:absolute;left:${x + 40}px;top:${top - LAB_H - LAB_GAP}px;width:${cardW + 6}px;height:${LAB_H}px;display:flex;flex-direction:column;gap:2px;overflow:hidden;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${stemDelay + ST_LINE}ms both;`}`,
-        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW + 6}px;overflow:hidden;`,
+          : `filter:none;opacity:${recede ? 0.4 : 1};transform:translateY(${lift ? Math.round(cardH * HOVER_GROW) : 0}px);transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE},transform ${D_PANEL}ms ${EASE};position:absolute;left:${x}px;top:${top + cardH + 12}px;width:${cardW}px;height:${CAPTION_H - 8}px;display:flex;flex-direction:column;gap:2px;overflow:visible;pointer-events:none;${recede || this.state.entered ? "animation:none;" : `animation:eb-line-in ${D_REVEAL}ms ${EASE} ${DROP_BASE + Math.min(DROP_STAGGER_MAX, i * DROP_STAGGER) + Math.round(DROP_MS * 0.6)}ms both;`}`,
+        /* a one-sentence taste of the piece that fades in under the caption while its print is hovered */
+        intro: (body1 || "").split(/(?<=[.!?])\s/)[0],
+        dateLabel: (SHOOT_INFO[title] && SHOOT_INFO[title][1]) || year,
+        introStyle: `position:absolute;left:0;top:${CAPTION_H - 4}px;width:${cardW}px;display:flex;flex-direction:column;gap:5px;opacity:${lift ? 1 : 0};transform:translateY(${lift ? 0 : -4}px);transition:opacity ${D_PANEL}ms ${EASE} ${lift ? 90 : 0}ms,transform ${D_PANEL}ms ${EASE} ${lift ? 90 : 0}ms;`,
+        dateStyle: "font:400 8.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8E8B82;",
+        introBodyStyle: "font:400 10.5px/1.45 Archivo,sans-serif;color:#4A4A46;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;",
+        labelHeadStyle: `display:flex;align-items:baseline;gap:9px;width:${cardW}px;overflow:hidden;`,
         plateStyle: `width:100%;height:100%;margin:0;position:relative;overflow:hidden;background:#FFFFFF;filter:brightness(${(0.97 + depth * 0.03).toFixed(3)}) contrast(${(0.97 + depth * 0.03).toFixed(3)});`,
         plateRotStyle: ROTATE_CW_TITLES.has(title)
           ? `position:absolute;top:50%;left:50%;width:${cardH}px;height:${cardW}px;transform:translate(-50%,-50%) rotate(90deg);background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`
           : `position:absolute;inset:0;background:#FFFFFF url("${IMG(id, 520)}") no-repeat center/contain;`,
-        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF,
+        hoverOuterStyle, hoverInnerStyle, swingStyle, tiltStyle, tiltF, clipStyle,
         onEnterCard: isOpen ? undefined : () => this.setState({ hoverIdx: zone + ":" + i }),
         onLeaveCard: isOpen ? undefined : () => this.setState({ hoverIdx: null }),
         openPlateStyle: `width:${plateW}px;flex:none;height:100%;box-sizing:border-box;padding:18px;border-right:1px solid rgba(14,14,14,.12);background:#FFFFFF;display:flex;flex-direction:column;gap:13px;animation:eb-plate-in ${D_HERO}ms ${EASE} 80ms both;`,
@@ -2204,13 +2361,48 @@ class Component extends DCLogic {
           const scale = this.state.lightboxPhase ? 1 : 0.94;
           return `width:min(90vw,1500px);height:min(86vh,1500px);background:transparent url("${url}") no-repeat center/contain;transform:scale(${scale})${rotate};transition:transform ${D_REVEAL}ms ${EASE};`;
         })(),
-        plateThumbs: ((() => {
+        /* detail view geometry: the print sits in the left of the screen, the sub photos along its bottom-left,
+           and the text takes a column on the right */
+        ...(() => {
+          const vw = typeof window !== "undefined" ? window.innerWidth : 1280, vh = typeof window !== "undefined" ? window.innerHeight : 800;
+          const open = this.state.openPhase === 1;
+          const textW = Math.round(Math.min(540, Math.max(380, vw * 0.34)));
+          const stageW = vw - textW, pad = Math.round(Math.max(32, vw * 0.04));
+          const boxW = stageW - pad * 2, boxTop = Math.round(Math.max(56, vh * 0.08)), boxH = vh - boxTop - 150;
+          const landscape = LANDSCAPE_TITLES.has(title);
+          let w, h;
+          if (!landscape) { h = Math.min(boxH, boxW * AR); w = h / AR; } else { w = Math.min(boxW, boxH * AR); h = w / AR; }
+          w = Math.round(w); h = Math.round(h);
+          const x = Math.round(pad + (boxW - w) / 2), y = Math.round(boxTop + (boxH - h) / 2);
           const dets = DETAILS[title] || [];
           const sel = this.state.detailSel;
-          const mkStyle = (imgId, on) => `width:56px;height:56px;flex:none;border-radius:3px;cursor:pointer;box-sizing:border-box;background:#FFFFFF url("${IMG(imgId, 160)}") no-repeat center/cover;border:1.5px solid ${on ? "#0E0E0E" : "rgba(14,14,14,.14)"};`;
-          return [{ style: mkStyle(id, sel == null), onClick: () => this.setState({ detailSel: null }) }]
-            .concat(dets.map((did, di) => ({ style: mkStyle(did, sel === di), onClick: () => this.setState({ detailSel: di }) })));
-        })()),
+          const bigId = (isOpen && sel != null && dets[sel]) ? dets[sel] : id;
+          const url = IMG(bigId, 1200);
+          const rect = this.state.openRect, fromHere = isOpen && rect && this.state.open === this.state.openOrigin;
+          const sx = fromHere ? rect.w / w : 0.96, sy = fromHere ? rect.h / h : 0.96;
+          const dx = fromHere ? rect.x - x : 0, dy = fromHere ? rect.y - y : 0;
+          const away = !open ? `translate(${dx}px,${dy}px) scale(${sx.toFixed(4)},${sy.toFixed(4)})` : "none";
+          const sheetStyle = [
+            "position:absolute", `left:${x}px`, `top:${y}px`, `width:${w}px`, `height:${h}px`, "z-index:3",
+            "box-sizing:border-box", "overflow:hidden", "background:#FFFFFF", "cursor:zoom-in", "transform-origin:0 0",
+            `transform:${away}`,
+            `box-shadow:${open ? "1px 2px 6px rgba(14,14,14,.10),12px 30px 60px rgba(14,14,14,.20)" : "1px 1px 2px rgba(14,14,14,.10),5px 14px 30px rgba(14,14,14,.13)"}`,
+            `opacity:${open || !landscape || !fromHere ? 1 : 0}`,
+            `transition:transform ${DETAIL_MS}ms cubic-bezier(.2,.8,.2,1),box-shadow ${DETAIL_MS}ms ${EASE},opacity ${Math.round(DETAIL_MS * 0.5)}ms ${EASE}`
+          ].join(";") + ";";
+          const sheetImgStyle = landscape
+            ? `position:absolute;top:50%;left:50%;width:${h}px;height:${w}px;transform:translate(-50%,-50%) rotate(-90deg);background:#FFFFFF url("${url}") no-repeat center/contain;`
+            : `position:absolute;inset:0;background:#FFFFFF url("${url}") no-repeat center/contain;`;
+          const mkThumb = (imgId, on, k) => `width:60px;height:60px;flex:none;cursor:pointer;box-sizing:border-box;background:#FFFFFF url("${IMG(imgId, 160)}") no-repeat center/cover;border:1.5px solid ${on ? "#0E0E0E" : "rgba(14,14,14,.14)"};opacity:${open ? 1 : 0};transform:${open ? "none" : "translateY(16px)"};transition:opacity 460ms ${EASE} ${Math.round(DETAIL_MS * 0.45) + k * 55}ms,transform 460ms ${EASE} ${Math.round(DETAIL_MS * 0.45) + k * 55}ms,border-color ${D_MICRO}ms ${EASE};`;
+          const thumbs = [{ style: mkThumb(id, sel == null, 0), onClick: () => this.setState({ detailSel: null }) }]
+            .concat(dets.map((did, di) => ({ style: mkThumb(did, sel === di, di + 1), onClick: () => this.setState({ detailSel: di }) })));
+          return {
+            sheetStyle, sheetImgStyle, plateThumbs: thumbs,
+            thumbRowStyle: `position:absolute;left:${x}px;width:${w}px;bottom:${44}px;z-index:4;display:flex;justify-content:center;gap:10px;`,
+            stageStyle: "position:relative;flex:1;min-width:0;height:100%;",
+            textColStyle: `flex:none;width:${textW}px;box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;gap:10px;padding:30px 34px 0;overflow:hidden;border-left:1px solid rgba(14,14,14,.10);opacity:${open ? 1 : 0};transform:${open ? "none" : "translateX(56px)"};transition:opacity ${Math.round(DETAIL_MS * 0.7)}ms ${EASE} ${Math.round(DETAIL_MS * 0.3)}ms,transform ${DETAIL_MS}ms cubic-bezier(.2,.8,.2,1) ${Math.round(DETAIL_MS * 0.2)}ms;`
+          };
+        })(),
         lineStyle1: "display:flex;justify-content:space-between;align-items:baseline;gap:14px;" + lineAnim(ST_LINE),
         titleStyle: "margin:0;font:600 clamp(21px,2vw,28px)/1.05 Archivo,sans-serif;letter-spacing:-.032em;" + lineAnim(ST_LINE * 2),
         metaBoxStyle: "flex:none;display:flex;flex-direction:column;gap:4px;padding-top:11px;border-top:1px solid rgba(14,14,14,.16);" + lineAnim(ST_LINE * 3),
@@ -2236,7 +2428,26 @@ class Component extends DCLogic {
         });
       }
     });
-    return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom };
+    /* the string: one line through every peg, dipping a little between them as a real line does,
+       tied off to a small nail at each end. Drawn once; it moves 1:1 with the prints. */
+    const sy = baseline;
+    const pegXs = items.map(it => Math.round(it.left + it.w / 2));
+    /* past both ends the string carries on with the same spacing and dip, as if more prints hung there,
+       far enough out that no end ever shows, even when the wall is pulled past its edge or the room is wide */
+    const gapAvg = pegXs.length > 1 ? (pegXs[pegXs.length - 1] - pegXs[0]) / (pegXs.length - 1) : 400;
+    const reach = Math.max(railW, 900) + 500;
+    const extra = Math.ceil(reach / gapAvg) + 1;
+    const allX = [];
+    for (let k = extra; k >= 1; k--) allX.push(Math.round(pegXs[0] - k * gapAvg));
+    pegXs.forEach(x => allX.push(x));
+    for (let k = 1; k <= extra; k++) allX.push(Math.round(pegXs[pegXs.length - 1] + k * gapAvg));
+    let stringD = `M ${allX[0]} ${sy}`, px = allX[0];
+    allX.slice(1).forEach(cx => {
+      const dx = cx - px, sag = Math.min(16, dx * CLIP_SAG);
+      stringD += ` Q ${((px + cx) / 2).toFixed(1)} ${(sy + sag * 2).toFixed(1)} ${cx} ${sy}`;
+      px = cx;
+    });
+    return { items, trackWidth, marks, baseline, baseOver, panelH, panelW, headH, openFrom, stringD };
   }
 
   zoneModel(zone, meta) {
@@ -2386,21 +2597,73 @@ class Component extends DCLogic {
     const isGrid = this.viewPref() === "grid";
     const scElG = this.refs2[zone] && this.refs2[zone].current;
     const gTop = scElG ? scElG.offsetTop : (this.state.bandH || 108) + 80;
-    const gridItems = (laid && isGrid) ? this.gridOrder(laid.items).map(({ it, i }, pos) => ({
-      title: it.title, idx: it.idx,
-      enterStyle: `animation:eb-grid-in 520ms ${EASE} ${Math.min(pos * 26, 700)}ms both;`,
+    const chrono = zone === "photo" && this.state.hue == null;
+    const gridItems = (laid && isGrid) ? this.gridOrder(laid.items, chrono).map(({ it, i }, pos) => ({
+      title: it.title, idx: it.idx, intro: it.intro, dateLabel: it.dateLabel,
+      enterStyle: this.state.rearr === zone ? "" : `animation:eb-grid-in 520ms ${EASE} ${Math.min(pos * 26, 700)}ms both;`,
       swatchStyle: `height:5px;width:100%;border-radius:3px;background:${it.swatch};`,
       imgRotStyle: this.plateImg(it),
       onClick: () => this.openPiece(zone, i)
     })) : [];
+    const hue = this.state.hueLive != null ? this.state.hueLive : this.state.hue;
+    const WHEEL = 54, W_IN = 16, W_MID = 22;
+    const wheelStops = [0, 60, 120, 180, 240, 300, 360].map(h => `hsl(${h},72%,58%)`).join(",");
     return {
+      /* the scroll line beside the grid is switched off for now; flip this back to isGrid to bring it back */
+      hasRail: false,
+      scrollLineStyle: "position:relative;position:sticky;top:14px;align-self:flex-start;flex:none;width:16px;height:calc(100vh - 340px);min-height:160px;cursor:pointer;touch-action:none;",
+      onScrollLineDown: (e) => {
+        const track = e.currentTarget, wrap = document.querySelector("[data-eb-gridwrap]");
+        if (!wrap) return;
+        const thumb = track.firstElementChild, th = thumb ? thumb.offsetHeight : 40;
+        const move = (ev) => {
+          const r = track.getBoundingClientRect();
+          const f = Math.min(1, Math.max(0, (ev.clientY - r.top - th / 2) / Math.max(1, r.height - th)));
+          wrap.scrollTop = f * (wrap.scrollHeight - wrap.clientHeight);
+        };
+        const up = () => { window.removeEventListener("mousemove", move); track.removeAttribute("data-drag"); };
+        track.setAttribute("data-drag", "1");
+        move(e);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up, { once: true });
+        e.preventDefault();
+      },
+      wheelBoxStyle: `position:relative;width:${WHEEL}px;height:${WHEEL}px;flex:none;`,
+      wheelLabel: hue == null ? "Colour" : "Reset",
+      wheelLabelStyle: `font:400 8.5px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:${hue == null ? "#8E8B82" : "#0E0E0E"};text-transform:uppercase;cursor:${hue == null ? "default" : "pointer"};${hue == null ? "" : "border-bottom:1px solid #0E0E0E;padding-bottom:2px;"}`,
+      wheelRingStyle: `position:absolute;inset:0;border-radius:50%;cursor:grab;background:conic-gradient(from 0deg,${wheelStops});-webkit-mask:radial-gradient(circle,transparent ${W_IN - .5}px,#000 ${W_IN}px);mask:radial-gradient(circle,transparent ${W_IN - .5}px,#000 ${W_IN}px);opacity:${hue == null ? .85 : 1};transition:opacity ${D_MICRO}ms ${EASE},transform ${D_PANEL}ms ${EASE};`,
+      wheelMarkerStyle: hue == null ? "display:none;" : `position:absolute;left:${(WHEEL / 2 + W_MID * Math.sin(hue * Math.PI / 180) - 7).toFixed(2)}px;top:${(WHEEL / 2 - W_MID * Math.cos(hue * Math.PI / 180) - 7).toFixed(2)}px;width:14px;height:14px;box-sizing:border-box;border-radius:50%;background:hsl(${Math.round(hue)},72%,58%);border:2px solid #FFFFFF;box-shadow:0 0 0 1px rgba(14,14,14,.45),0 2px 5px rgba(14,14,14,.25);pointer-events:none;`,
+      wheelCentreStyle: `position:absolute;left:${WHEEL / 2 - 10}px;top:${WHEEL / 2 - 10}px;width:20px;height:20px;box-sizing:border-box;border-radius:50%;cursor:${hue == null ? "default" : "pointer"};background:${hue == null ? "rgba(14,14,14,.10)" : `hsl(${Math.round(hue)},72%,58%)`};border:1px solid rgba(14,14,14,${hue == null ? .12 : .35});transition:background ${D_MICRO}ms ${EASE};`,
+      /* press anywhere on the ring and drag round it: the marker follows at once and the prints re-sort as you go */
+      onWheelDown: (e) => {
+        const ring = e.currentTarget, r = ring.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        if (Math.hypot(e.clientX - cx, e.clientY - cy) < r.width * (W_IN / WHEEL)) return;
+        const hueAt = (ev) => { const h = Math.atan2(ev.clientX - cx, -(ev.clientY - cy)) * 180 / Math.PI; return h < 0 ? h + 360 : h; };
+        let last = 0;
+        const apply = (h, force) => {
+          const now = performance.now();
+          if (force || now - last > 190) { last = now; this.rearrange(h, zone); } else this.setState({ hueLive: h });
+        };
+        const move = (ev) => apply(hueAt(ev), false);
+        const up = (ev) => {
+          window.removeEventListener("mousemove", move);
+          const h = hueAt(ev), cur = this.state.hue;
+          if (cur == null || Math.abs(h - cur) > 0.5) this.rearrange(h, zone); else this.setState({ hueLive: cur });
+        };
+        apply(hueAt(e), true);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up, { once: true });
+        e.preventDefault();
+      },
+      onToTop: () => { const wrap = document.querySelector("[data-eb-gridwrap]"); if (wrap) wrap.scrollTo({ top: 0, behavior: "smooth" }); },
+      onWheelReset: () => { if (this.state.hue != null) this.rearrange(null, zone); },
       isGrid, isWall: !isGrid, gridItems,
       scrollerHide: isGrid ? "visibility:hidden;pointer-events:none;" : "",
-      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:calc(${gTop + Math.round((typeof window !== "undefined" ? window.innerHeight : 900) * 0.16)}px * (1 - var(--gp, 0)));z-index:4;overflow-y:auto;-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));box-sizing:border-box;padding:14px 36px 96px;filter:none;opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
+      gridWrapStyle: `position:absolute;left:0;right:0;bottom:0;top:calc(${gTop + Math.round((typeof window !== "undefined" ? window.innerHeight : 900) * 0.035)}px * (1 - var(--gp, 0)));z-index:4;overflow-y:auto;-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--gp, 0) * ${GRID_TOP_FADE}px));box-sizing:border-box;padding:14px 36px 96px;filter:none;opacity:${anyOpen ? .35 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_GROUND}ms ${EASE},opacity ${D_GROUND}ms ${EASE};`,
       viewBtns: this.segBtns("view", [["wall", "Wall"], ["grid", "Grid"]], this.viewUi(), false),
       viewInd: this.segInd(this.viewUi() === "grid" ? 1 : 0),
       sortInd: this.segInd(this.sortPref() === "colour" ? 1 : 0),
-      sortBtns: this.segBtns("sort", [["date", "Date"], ["colour", "Colour"]], this.sortPref(), false),
+      sortBtns: this.segBtns("sort", [["date", "Date"], ["colour", "Colour"]], this.sortPref(), false, true),
       paneStyle, eyebrowStyle, navBtnStyle, peek, ticks,
       railHeadStyle: `flex:none;display:grid;grid-template-columns:1fr auto 1fr;justify-content:space-between;align-items:center;gap:22px;padding:${(this.state.bandH || 108) + 22}px 36px 12px;filter:opacity(calc(1 - var(--gp, 0)));opacity:${anyOpen ? 0.45 : 1};pointer-events:${anyOpen ? "none" : "auto"};transition:filter ${D_HERO}ms ${EASE},opacity ${D_HERO}ms ${EASE};animation:eb-head-in ${D_REVEAL}ms ${EASE} 120ms both;`,
       peekRowStyle: "flex:1;min-height:0;display:flex;gap:18px;align-items:flex-start;margin:0 -70px 22px 0;pointer-events:none;overflow:hidden;",
@@ -2448,7 +2711,9 @@ class Component extends DCLogic {
       priceStyle: `font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#FFF;background:${accent};padding:6px 10px;white-space:nowrap;`,
       trackStyle: laid ? `position:relative;height:100%;width:${laid.trackWidth}px;` : "position:relative;height:100%;width:100%;",
       baseOver: laid ? String(laid.baseOver) : "0",
-      baselineStyle: laid ? `position:absolute;left:${-laid.baseOver}px;width:${laid.trackWidth}px;top:${laid.baseline - 1}px;height:2px;background:linear-gradient(to bottom,rgba(14,14,14,.11),rgba(14,14,14,.30));box-shadow:0 1.5px 2.5px rgba(14,14,14,.09);will-change:transform;` : "display:none;",
+      stringD: laid ? laid.stringD : "",
+      stringStyle: laid ? `position:absolute;left:0;top:0;width:${laid.trackWidth}px;height:${laid.baseline + 40}px;overflow:visible;pointer-events:none;z-index:2;${this.state.entered ? "" : `animation:eb-string-in ${DROP_MS - 60}ms cubic-bezier(.22,.88,.3,1) ${DROP_BASE}ms both;`}` : "display:none;",
+      baselineStyle: "display:none;",
       items: laid ? laid.items : [],
       hasOpen: !!(laid && openIdx !== null && laid.items[openIdx]),
       open: (laid && openIdx !== null && laid.items[openIdx]) || {},
@@ -2459,25 +2724,14 @@ class Component extends DCLogic {
          tween between them is the expand. */
       openPanelStyle: (() => {
         if (!laid || openIdx === null) return "display:none;";
-        const { h: railH, w: railW } = this.railBox();
-        const pw = laid.panelW, ph = laid.panelH;
-        const sc = this.state.openScroll || 0;
-        const shift = 0;
         const open = this.state.openPhase === 1;
-        /* the panel is laid out at its final size and place from the first frame, so its
-           text never reflows; opening is only a fade and a short rise. */
-        const L = Math.round((railW - pw) / 2 + shift);
-        const T = Math.round((laid.headH + railH - ph) / 2);
+        /* the detail view: the wall dims behind it, the print travels left and grows, the text comes in from the right */
         return [
-          "position:absolute", `left:${L}px`, `top:${T}px`,
-          `width:${pw}px`, `height:${ph}px`,
-          "z-index:90", "box-sizing:border-box", "overflow:hidden", "background:#FFFFFF",
-          "border:1px solid rgba(14,14,14,.20)",
-          "box-shadow:1px 2px 6px rgba(14,14,14,.12),10px 34px 70px rgba(14,14,14,.24)",
+          "position:fixed", "inset:0", "z-index:90", "display:flex", "overflow:hidden",
+          "background:rgba(245,248,239,.58)",
+          "backdrop-filter:blur(22px) saturate(1.05)", "-webkit-backdrop-filter:blur(22px) saturate(1.05)",
           `opacity:${open ? 1 : 0}`,
-          `transform:${open ? "none" : "translateY(18px)"}`,
-          "will-change:opacity,transform",
-          `transition:opacity ${D_PANEL}ms ${EASE},transform ${D_PANEL}ms ${EASE}`
+          `transition:opacity ${Math.round(DETAIL_MS * 0.55)}ms ${EASE}`
         ].join(";") + ";";
       })(),
       marks: laid ? laid.marks : [],
